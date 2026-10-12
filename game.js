@@ -213,7 +213,7 @@
     for(const l of blocked.slice(0,count))objects.push({lane:l,z,type:hazards[wave%4],hit:false});
     for(let j=0;j<5;j++)objects.push({lane:safeLane,z:z+5-j*2.3,type:'crystal',hit:false});
     if(wave%3===1)objects.push({lane:safeLane,z:z-9,type:['board','magnet','surcharge'][Math.floor(wave/3)%3],hit:false});
-    if(wave%2===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,...available[0]});}
+    if(wave%4===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,...available[0]});}
     wave++;
   }
   function update(dt){

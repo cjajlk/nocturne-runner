@@ -1,6 +1,6 @@
 {
   "name": "nocturne-runner",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "description": "Nocturne Runner browser prototype",
   "scripts": {
