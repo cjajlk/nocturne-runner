@@ -13,6 +13,10 @@
   const CX = W / 2;
 
   let state = 'menu';
+  window.getGameState = () => ({
+    running: window.CJajlkAccount?.isIdentityReady?.() === true && state === 'playing',
+    paused: document.hidden || !document.hasFocus() || !overlay.classList.contains('hidden')
+  });
   let lane = 1, px = 1;
   let dist = 0, score = 0, orbs = 0;
   let speed = 0.35;
@@ -117,6 +121,7 @@
   }
 
   function reset() {
+    window.CJGameIntegration?.suspend();
     lane = px = 1;
     dist = score = orbs = scroll = frame = 0;
     objects = [];
@@ -134,6 +139,7 @@
   }
 
   function finish() {
+    window.CJGameIntegration?.suspend();
     if(state==='over') return;
     state='over'; best=Math.max(best,Math.floor(dist));
     try{localStorage.setItem('nocturneRunnerBest',best)}catch{}
@@ -180,6 +186,7 @@
 
   btn.addEventListener('click', () => {
     if (state === 'paused') {
+      window.CJGameIntegration?.suspend();
       state = 'playing';
       overlay.classList.add('hidden');
       last = performance.now();
@@ -190,6 +197,7 @@
   });
 
   function togglePause() {
+    window.CJGameIntegration?.suspend();
     if (state === 'playing') {
       state = 'paused';
       showOverlay('COURSE EN PAUSE','REPRENDRE');
@@ -576,6 +584,7 @@
 
   function loop(now) {
     if (state !== 'playing') return;
+    window.CJGameIntegration?.tick(now, 'runner');
     const dt = Math.min(0.045, (now - last) / 1000 || 0.016);
     last = now;
     update(dt);
