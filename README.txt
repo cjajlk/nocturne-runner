@@ -57,3 +57,5 @@ WebGL observée. Téléphone physique et Safari non testés.
 CORRECTION v0.9.1 : proportions originales du personnage respectées dans toutes les poses ; silhouette agrandie en hauteur avec les pieds ancrés sur la route.
 
 CORRECTION v0.9.2 : planche néon dessinée sous les deux pieds, posture debout pendant la glisse, petit compagnon robot durant l'aimant et fragments animés vers lui. Vitesse : 17 m/s au départ, augmentation avec la distance, plafond de 36,5 m/s à 2 730 mètres (hors propulsion).
+
+VERSION v0.10.0 : lettres holographiques et mots sauvegardés, Nova à gagner après quatre mots, boutique de compagnons avec chat néon animé à 250 cristaux. Voir README.md pour les règles et les tests.

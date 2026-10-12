@@ -1,0 +1,12 @@
+{
+  "name": "nocturne-runner",
+  "version": "0.10.0",
+  "private": true,
+  "description": "Nocturne Runner browser prototype",
+  "scripts": {
+    "test": "node tests/browser-smoke.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
