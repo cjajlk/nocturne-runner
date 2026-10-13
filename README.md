@@ -1,55 +1,59 @@
-# Nocturne Runner
+# Nocturne Runner V1
 
-Prototype v0.10.1 : endless runner dans une cité néon.
+Version de travail V1, basée sur `1708fff`. Voir [V1-STATUS.md](V1-STATUS.md) pour le bilan, les tests et les points en attente.
 
 ## Jouer
 
-Ouvrir `index.html` dans Chrome ou Edge, ou servir le dossier avec un serveur local. Aucun téléchargement externe n'est nécessaire pour jouer.
+Ouvrir `index.html` dans Chrome/Edge, ou garder le serveur local et l'adresse utilisés habituellement. Le rendu 3D est nécessaire à cette version ; si l'accélération graphique est indisponible, la course est bloquée plutôt que d'afficher des fossés invisibles.
 
-- ← → : changer de voie ; ↑ ou espace : sauter ; ↓ : glisser.
-- B : propulsion, une activation par course ; Échap : pause.
-- Mobile : gestes directionnels et bouton propulsion.
+- ← → : voie ; ↑ ou espace : saut ; ↓ : glissade ; Échap : pause.
+- 1 : aimant ; 2 : planche ; 3 : Surge ; 4 ou B : propulsion aérienne.
+- Mobile : gestes et quatre boutons de bonus.
+- La course se met en pause à la perte de focus. Reprise manuelle.
 
-## Mots de la cité
+## Parcours
 
-Collecter les lettres holographiques dorées pour compléter la série **NÉON → OMBRE → NOVA → ÉCLIPSE**. Les accents ne sont pas à ramasser. Les lettres d'un même mot peuvent être récupérées dans n'importe quel ordre.
+Distance illimitée. Vitesse de base de 17 à 36,5 m/s. La planche ajoute 12 à 18 % de vitesse, sans protection. La difficulté évolue par paliers : 600, 1 800, 3 000, 6 000, 10 000, 20 000 et 50 000 mètres. Deux rangées de répit sur dix. Une voie libre est réservée ; les drones ne la traversent pas. Espacement calculé pour une fenêtre d'au moins 1,45 s à la vitesse maximale prévue du secteur.
 
-Chaque lettre est sauvegardée immédiatement. Récompenses : 50 / 55 / 50 / 65 cristaux. Après vingt mots (cinq séries complètes), **Nova** devient disponible dans Personnages. La série recommence ensuite et continue à rapporter des cristaux.
+Drones à partir de 3 000 m : bas = saut/esquive ; haut = glissade/esquive. Trajet gauche-droite-gauche, flèche anticipée, mouvement figé à l'approche. Fossés de trois unités de route, sur une ou deux voies : saut/esquive, sinon chute.
 
-L'aimant ramasse les cristaux uniquement : les lettres se récupèrent en passant dans leur voie.
+## Fragments
 
-## Équilibrage v0.10.1
+Petits groupes au lieu des longues lignes : fragments violets de 2 ou 3 unités, fragments dorés à risque de 5. Récompense de distance : 5 par tranche de 1 000 m, une fois par course. Esquive proche : 1, limitée à 10 par course. Les crédits sont enregistrés pendant la course, avec journal de reprise après interruption et déduplication.
 
-- Cinq niveaux par amélioration : 600 / 1 500 / 3 200 / 6 000 / 10 000 cristaux.
-- Chat néon : 5 000 cristaux.
-- Nova : 20 mots, soit cinq séries.
-- Une occasion de lettre toutes les quatre rangées, contre deux auparavant.
-- Récompenses des mots réduites ; collecte des fragments conservée.
+Les prix existants restent provisoires et inchangés : améliorations 600 / 1 500 / 3 200 / 6 000 / 10 000 ; chat 5 000 ; Nova 20 mots. Lettres, missions, collection et compagnons sont conservés.
 
-Les anciennes acquisitions sont conservées. Une Nova débloquée avant cette version reste disponible, même avec moins de vingt mots. Portefeuille, compagnons et niveaux déjà achetés sont conservés. Les nouveaux seuils s'appliquent aux achats et aux futurs déblocages. Ce réglage doit être ajusté avec les essais de jeu.
+## Inventaire et bonus
 
-## Compagnons et personnages
+Choisir les quantités à emporter dans Inventaire, maximum trois de chaque type. Le stock supplémentaire reste sauvegardé. Aucun stock gratuit ajouté lors de la migration. Un bonus ramassé rejoint le stock, à équiper pour une prochaine course.
 
-- Robot éclaireur : gratuit, équipé par défaut.
-- Chat néon : 5 000 cristaux, achat unique et sélection sauvegardée.
-- Compagnons visibles pendant l'aimant, avec animation de collecte.
-- Renard spectral et corbeau cyber : annoncés « Bientôt », sans achat.
-- Nova possède ses poses debout, course, saut et glissade. Les personnages ont les mêmes capacités.
+Un effet actif à la fois. Une unité consommée à l'activation. Cinq secondes de récupération après sa fin ; les compteurs s'arrêtent en pause.
 
-## Sauvegarde
+- Aimant : collecte de fragments par le compagnon.
+- Planche : accélération, aucune invulnérabilité.
+- Surge : un choc absorbé ; ne protège pas d'une chute dans un fossé.
+- Propulsion : vol et passage au-dessus des obstacles/fossés.
 
-Le portefeuille, les améliorations, les missions, les mots et les choix équipés sont conservés dans le navigateur. La clé de sauvegarde de v0.9 est conservée et enrichie. Garder le même navigateur et la même adresse de jeu pour retrouver sa progression.
+Ancienne Surcharge de score : niveau conservé séparément ; conversion en Surge à décider. Aucun remboursement ni conversion imposée.
 
-Les cristaux de course sont versés à la fin de la course. Les récompenses des mots sont versées immédiatement. Musique et autres variantes restent à venir.
+## Résurrection et record
 
-## Assets
+Une proposition par course après une mort non protégée, si le portefeuille contient 50 fragments. Acceptation : paiement unique, même distance, deux secondes de protection et dégagement des dangers proches. Refus ou deuxième mort : fin définitive. Aucun bonus consommé remboursé.
 
-Visuels originaux créés avec ImageGen intégré : `assets/nova-sheet.png` et `assets/cat-sheet.png`. Coordonnées des poses dans `assets/sprites.js`, prompts complets dans [assets/ASSETS.md](assets/ASSETS.md).
+L'ancien record reste l'objectif pendant la course. Mètres restants, barre et effet au dépassement ; record final enregistré de façon transactionnelle.
 
-## Vérification
+## Sauvegardes et CJ
 
-`tests/browser-smoke.cjs` couvre collisions, génération, collecte, achats, migration v0.9, progression des mots, déblocage de Nova et sauvegarde des sélections.
+Stockage V1 : `nocturneRunnerV1Data`. Original `nocturneRunnerProfileV1` et ancien record laissés intacts ; copie de migration dans `nocturneRunnerV1LegacyBackup`. Les événements en attente ont leur propre préfixe. Aucun effacement automatique des données invalides. Un échec de sauvegarde arrête la course ; recharger après résolution du problème.
 
-Pour relancer les tests : installer les dépendances de développement avec `npm install`, installer Chromium avec `npx playwright install chromium`, puis lancer `npm test`. Pour utiliser Chrome existant, définir `NOCTURNE_CHROME` avec le chemin de son exécutable.
+Les crédits, achats et récompenses internes utilisent un verrou propre à Nocturne. L'adaptateur CJ est inchangé. Les CJ universels restent gérés uniquement par le moteur du Hub. Une origine différente (fichier local, localhost, GitHub Pages) possède un stockage différent : la validation réelle du compte universel devra se faire sur la bonne origine.
 
-Les dépendances de développement ne sont pas nécessaires pour jouer. Affichage vérifié dans Chrome à 900 × 1400 et 390 × 844. Téléphone physique non testé.
+## Musique future
+
+Aucun morceau ajouté. Options et volume indépendant préparés. Après validation et fourniture d'un morceau local, l'intégration peut appeler `NRAudio.setTrack('music/nocturne-dnb.mp3')`. Boucle, autorisation au geste utilisateur et continuité sans redémarrage à la résurrection sont préparées. Lecture réelle à vérifier avec le morceau approuvé.
+
+## Développement et tests
+
+Le jeu ne nécessite pas les dépendances de test. Pour les tests : `npm install`, `npx playwright install chromium`, `npm test`. Chrome déjà installé peut être utilisé via `NOCTURNE_CHROME`. La suite actuelle est `tests/v1-smoke.cjs` ; l'ancienne suite est conservée comme référence dans `tests/legacy-v010-smoke.cjs`.
+
+Ne pas effacer le stockage pour rafraîchir les fichiers : actualiser sans cache suffit. Avant tout retour à v0.10, exporter les nouvelles données V1, car cette ancienne version ne représente pas les nouveaux stocks.

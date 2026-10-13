@@ -3,12 +3,12 @@
 const W=900,H=1400,canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
 const gl=canvas.getContext('webgl',{alpha:true,antialias:true,preserveDrawingBuffer:true,premultipliedAlpha:false});
 if(!gl){window.NR3D=null;return;}
-const vert=`attribute vec3 p;attribute vec4 c;uniform mat4 vp;varying vec4 v;void main(){gl_Position=vp*vec4(p,1.);v=c;}`;
-const frag=`precision mediump float;varying vec4 v;void main(){gl_FragColor=v;}`;
+const vert=`attribute vec3 p;attribute vec4 c;uniform mat4 vp;varying vec4 v;varying vec3 world;void main(){gl_Position=vp*vec4(p,1.);v=c;world=p;}`;
+const frag=`precision mediump float;varying vec4 v;varying vec3 world;uniform vec4 gaps[12];uniform int gapCount;void main(){for(int i=0;i<12;i++){if(i>=gapCount)break;if(world.y<.08 && world.x>gaps[i].x && world.x<gaps[i].y && world.z>gaps[i].z && world.z<gaps[i].w)discard;}gl_FragColor=v;}`;
 function shader(type,s){const q=gl.createShader(type);gl.shaderSource(q,s);gl.compileShader(q);if(!gl.getShaderParameter(q,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(q));return q;}
 const prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vert));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,frag));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));
 gl.useProgram(prog);const locP=gl.getAttribLocation(prog,'p'),locC=gl.getAttribLocation(prog,'c'),locVP=gl.getUniformLocation(prog,'vp');const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(locP);gl.enableVertexAttribArray(locC);gl.vertexAttribPointer(locP,3,gl.FLOAT,false,28,0);gl.vertexAttribPointer(locC,4,gl.FLOAT,false,28,12);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);
-const camera=[0,5.9,14],target=[0,-3.2,-34],fovy=Math.PI/3.35,aspect=W/H;
+const camera=[0,5.9,14],target=[0,-3.2,-34],fovy=Math.PI/2.3,aspect=W/H;
 function sub(a,b){return[a[0]-b[0],a[1]-b[1],a[2]-b[2]];}function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}function norm(a){const n=Math.hypot(...a);return a.map(t=>t/n);}
 const front=norm(sub(target,camera)),right=norm(cross(front,[0,1,0])),up=cross(right,front),near=.2,far=400;
 const f=1/Math.tan(fovy/2),nf=1/(near-far);
@@ -17,7 +17,8 @@ const persp=[f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0];
 const view=[right[0],up[0],-front[0],0,right[1],up[1],-front[1],0,right[2],up[2],-front[2],0,-dot(right,camera),-dot(up,camera),dot(front,camera),1];
 const vp=new Float32Array(16);for(let col=0;col<4;col++)for(let row=0;row<4;row++){let s=0;for(let k=0;k<4;k++)s+=persp[k*4+row]*view[col*4+k];vp[col*4+row]=s;}
 gl.uniformMatrix4fv(locVP,false,vp);
-let a=[];
+let a=[],vertexData=new Float32Array(0);
+const gapLoc=gl.getUniformLocation(prog,'gaps[0]');
 function tri(v1,v2,v3,color){const n=cross(sub(v2,v1),sub(v3,v1)),length=Math.hypot(...n)||1;const shade=.72+.28*Math.abs(n[1]/length)+.12*Math.abs(n[2]/length);for(const p of [v1,v2,v3]){const fog=Math.max(.12,Math.min(1,(p[2]+240)/180));a.push(...p,color[0]*shade*fog+.055*(1-fog),color[1]*shade*fog+.035*(1-fog),color[2]*shade*fog+.12*(1-fog),color[3]);}}
 function quad(p0,p1,p2,p3,col){tri(p0,p1,p2,col);tri(p0,p2,p3,col);}
 function box(x0,y0,z0,x1,y1,z1,col){quad([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],col);quad([x0,y0,z1],[x1,y0,z1],[x1,y0,z0],[x0,y0,z0],col);quad([x0,y0,z1],[x0,y1,z1],[x1,y1,z1],[x1,y0,z1],col);quad([x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z0],col);quad([x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1],col);quad([x1,y0,z1],[x1,y1,z1],[x1,y1,z0],[x1,y0,z0],col);}
@@ -96,6 +97,7 @@ function city(scroll){
 
 function obstacles(list){for(const o of list||[]){if(o.hit||o.z>12)continue;const x=(o.lane-1)*3.66,z=o.z;
  const dark=[.08,.10,.17,1],metal=[.24,.23,.33,1],pink=[.94,.16,.76,1],cyan=[.15,.87,.97,1];
+ if(o.type==='gap'){const half=o.length/2;for(const dz of [-half,half])box(x-1.78,.09,z+dz-.06,x+1.78,.14,z+dz+.06,cyan);continue;}
  if(o.type==='crate'||o.type==='container'){
  const w=o.type==='container'?1.4:1.05,h=o.type==='container'?4.6:1.65;
  box(x-w,0,z-.9,x+w,h,z+.9,dark);box(x-w,h,z-.9,x+w,h+.12,z+.9,metal);
@@ -115,13 +117,14 @@ function obstacles(list){for(const o of list||[]){if(o.hit||o.z>12)continue;cons
  }
 }}
 
-function render(scroll,speed,list){gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);a=[];
+function render(scroll,speed,list){const factor=window.NRProfile?.options.quality==='low'?.5:1;if(canvas.width!==W*factor){canvas.width=W*factor;canvas.height=H*factor;}gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);a.length=0;
+const holes=(list||[]).filter(o=>o.type==='gap'&&o.z>-240&&o.z<15);const gapData=new Float32Array(48);for(let i=0;i<12;i++){const o=holes[i];gapData.set(o?[(o.lane-1)*3.66-1.78,(o.lane-1)*3.66+1.78,o.z-o.length/2,o.z+o.length/2]:[0,0,0,0],i*4);}gl.uniform4fv(gapLoc,gapData);gl.uniform1i(gl.getUniformLocation(prog,'gapCount'),Math.min(12,holes.length));
 const slide=(scroll*25)%16;
 city(scroll);
 for(let i=0;i<15;i++){const z1=12-i*16+slide;const z0=z1-16;segment(z0,z1,i%9===5);if(i%2===0){for(let side of [-1,1]){let x=side*7.2;box(x-.43,-6,z0-4,x+.43,-.45,z0-3.1,[.085,.075,.19,1]);box(x-.49,-5.8,z0-4,x+.49,-5.6,z0-3.1,cTrim);box(side*5.6-.13,-.8,z0-4,side*7.2+.13,-.5,z0-3.1,[.08,.12,.21,1]);}}}
 // Thin real 3D rails/bumpers near the track
 for(let i=0;i<12;i++){const z=10-i*17+(scroll*25)%17;for(let side of [-1,1]){box(side*5.65-.22,.37,z,side*5.65+.22,1.2,z+.4,cRail);box(side*5.6-.13,.96,z,side*5.6+.13,1.08,z+17,cCyan);}}
 obstacles(list);
-const data=new Float32Array(a);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,data.length/7);return canvas;}
+if(vertexData.length<a.length)vertexData=new Float32Array(Math.ceil(a.length*1.2));vertexData.set(a);const data=vertexData.subarray(0,a.length);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,data.length/7);return canvas;}
 window.NR3D={render,project:projection,canvas,available:true};
 })();

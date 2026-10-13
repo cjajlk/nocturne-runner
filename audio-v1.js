@@ -1,0 +1,2 @@
+/* Future approved local Suno track only; no music file is bundled. */
+(()=>{let track=null,unlocked=false;window.NRAudio={setTrack(url){if(!url||/^https?:/.test(url))throw Error('Use an approved local music file');track=new Audio(url);track.loop=true;this.sync();},unlock(){unlocked=true;if(track&&NRProfile.options.music)track.play().catch(()=>{});},sync(){if(!track)return;track.volume=Math.max(0,Math.min(1,Number(NRProfile.options.musicVolume)||0));if(unlocked&&NRProfile.options.music)track.play().catch(()=>{});else track.pause();},get supplied(){return !!track;}};})();

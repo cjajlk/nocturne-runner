@@ -24,14 +24,17 @@
   let spawn = 0, scroll = 0;
   let board = 0, jump = 0, slide = 0, stun = 0;
   let last = 0, frame = 0;
-  let best = 0;
+  let best = 0,oldBest=0,newRecord=false,recordFlash=0,runId=null,activeBonus=null,cooldown=0,bonusPending=false,revived=false,invulnerable=0,fallTime=0,sequence=0;
+  let storageBlocked=false;
+  const storeError=e=>{storageBlocked=true;if(state==='playing')togglePause();if(state!=='menu'){state='paused';showOverlay('SAUVEGARDE À VÉRIFIER','RECHARGER LE JEU');msg.textContent='Course arrêtée pour préserver les données. Recharge le jeu pour récupérer les événements en attente.';}document.querySelector('#notice').textContent='Sauvegarde : '+e.message;};
+  const persist=p=>p.catch(storeError);
   let collectedFragments=[],wordToast='',wordToastTime=0;
   let magnet=0, surcharge=0, propulsion=0, chargeReady=true, wave=0, safeLane=1;
   let runStats={jumps:0, dodges:0};
   const duration=k=>8+NRProfile.levels[k]*2;
-  const hazards=['crate','barrier','laser','container'];
+  const hazards=NRTrack.hazards;
 
-  try { best = Number(localStorage.getItem('nocturneRunnerBest') || 0); } catch {}
+  try { best = NRStore.read().best; } catch {}
 
   const img = {};
   const manifest = {
@@ -45,6 +48,7 @@
     crystal: 'bonus/asset_01.png',
     shield: 'bonus/asset_04.png',
     boost: 'bonus/asset_05.png',
+    magnet: 'bonus/asset_03.png',
     barrier: 'barrieres/asset_08.png',
     post: 'barrieres/asset_10.png',
     road: 'routes/asset_01.png',
@@ -120,7 +124,10 @@
     return { left: CX - m.half, right: CX + m.half, y: m.y, half: m.half };
   }
 
-  function reset() {
+  async function reset() {
+    if(!window.NR3D){msg.textContent='Le rendu 3D n’est pas disponible. Active l’accélération graphique du navigateur, puis recharge le jeu.';return;}
+    if(state==='starting')return;state='starting';try{await NRStore.ready;runId=await NRStore.start();}catch(e){state='menu';storeError(e);return;}
+    oldBest=NRStore.read().best;best=oldBest;newRecord=false;recordFlash=0;cooldown=0;activeBonus=null;bonusPending=false;revived=false;invulnerable=0;sequence=0;fallTime=0;NRAudio.unlock();
     window.CJGameIntegration?.suspend();
     lane = px = 1;
     dist = score = orbs = scroll = frame = 0;
@@ -128,33 +135,31 @@
     collectedFragments=[]; wordToast='';wordToastTime=0; wave=0; safeLane=1; magnet=surcharge=propulsion=0; chargeReady=true; runStats={jumps:0,dodges:0};
     for(let z=-26;z>-150;z-=24) spawnObj(z);
     speed = 0.34;
-    spawn = 26;
+    spawn = 32;
     board = jump = slide = stun = 0;
     state = 'playing';
     overlay.classList.add('hidden');
-    document.querySelector('#boost-control').classList.remove('hidden');
+    document.querySelector('#bonus-controls').classList.remove('hidden');
     pauseBtn.classList.remove('hidden');
     last = performance.now();
     requestAnimationFrame(loop);
   }
 
-  function finish() {
-    window.CJGameIntegration?.suspend();
-    if(state==='over') return;
-    state='over'; best=Math.max(best,Math.floor(dist));
-    try{localStorage.setItem('nocturneRunnerBest',best)}catch{}
-    NRProfile.bankRun(orbs,Math.floor(dist),runStats);
-    showOverlay('COURSE TERMINÉE', 'REJOUER');
-    msg.innerHTML=`<div class="results"><span>Distance<strong>${Math.floor(dist)} m</strong></span><span>Score<strong>${Math.floor(score)}</strong></span><span>Cristaux gagnés<strong>+${orbs} ◈</strong></span><span>Portefeuille<strong>${NRProfile.wallet} ◈</strong></span></div>`;
-    pauseBtn.classList.add('hidden');document.querySelector('#boost-control').classList.add('hidden');
+  async function finish(){
+    if(state==='over'||state==='finishing')return;state='finishing';CJGameIntegration?.suspend();
+    try{await NRStore.flush();await NRStore.finish(runId,Math.floor(dist),runStats);best=NRStore.read().best;state='over';showOverlay('COURSE TERMINÉE','REJOUER');msg.innerHTML=`<div class="results"><span>Distance<strong>${Math.floor(dist)} m</strong></span><span>Score<strong>${Math.floor(score)}</strong></span><span>Fragments sécurisés<strong>${orbs} ◈</strong></span><span>Portefeuille<strong>${NRProfile.wallet} ◈</strong></span></div>`;pauseBtn.classList.add('hidden');document.querySelector('#bonus-controls').classList.add('hidden');}catch(e){state='paused';storeError(e);}
   }
+  async function death(fall=false){if(state!=='playing')return;if(activeBonus)cooldown=5;activeBonus=null;board=magnet=propulsion=0;CJGameIntegration?.suspend();if(fall){state='falling';fallTime=.5;return;}await offerRevive();}
+  async function offerRevive(){state='checking';try{await NRStore.flush();if(!revived&&NRStore.read().wallet>=50){state='dead';showOverlay('UNE SECONDE CHANCE','REVENIR · 50 ◈');msg.innerHTML='<p>Reprends à la même distance avec 2 secondes de protection.</p><button id="refuse-revive">Terminer la course</button>';document.querySelector('#refuse-revive').onclick=()=>finish();}else finish();}catch(e){state='paused';storeError(e);}}
+  async function resurrect(){if(state!=='dead'||bonusPending)return;bonusPending=true;try{if(!await NRStore.revive(runId)){bonusPending=false;return finish();}revived=true;invulnerable=2;objects=objects.filter(o=>!hazards.includes(o.type)||o.z<-30||o.z>9);jump=slide=0;state='playing';overlay.classList.add('hidden');last=performance.now();requestAnimationFrame(loop);}catch(e){storeError(e);}finally{bonusPending=false;}}
   function showOverlay(title,label){
     document.querySelector('#screen-title').textContent=title;
     document.querySelector('#home-screen').hidden=false;
     document.querySelector('#detail-screen').hidden=true;
     btn.textContent=label; overlay.classList.remove('hidden');refreshMenu();
   }
-  function activateBoost(){if(state!=='playing'||!chargeReady)return;chargeReady=false;propulsion=4+NRProfile.levels.propulsion;NRProfile.sound(600);}
+  async function activateBonus(type){if(state!=='playing'||activeBonus||cooldown>0||bonusPending)return false;bonusPending=true;try{if(!await NRStore.consume(runId,crypto.randomUUID(),type))return false;activeBonus={type,time:type==='propulsion'?4+NRProfile.levels.propulsion:duration(type)};NRProfile.sound(650);return true;}catch(e){storeError(e);return false;}finally{bonusPending=false;}}
+  const activateBoost=()=>activateBonus('propulsion');
   function control(direction) {
     if (state !== 'playing') return;
     if (direction === 'left') lane = Math.max(0, lane - 1);
@@ -168,12 +173,12 @@
       ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
       a: 'left', d: 'right', w: 'up', s: 'down', ' ': 'up'
     };
-    if (m[e.key]) {
+    if (m[e.key]&&state==='playing') {
       e.preventDefault();
       control(m[e.key]);
     }
     if (e.key === 'Escape') togglePause();
-    if(e.key.toLowerCase()==='b') activateBoost();
+    if(e.key.toLowerCase()==='b')activateBoost();const bonusKeys={1:'magnet',2:'board',3:'surge',4:'propulsion'};if(bonusKeys[e.key])activateBonus(bonusKeys[e.key]);
   });
 
   let sx = 0, sy = 0;
@@ -185,6 +190,8 @@
   });
 
   btn.addEventListener('click', () => {
+    if(storageBlocked){location.reload();return;}if(['starting','checking','finishing','falling'].includes(state)||bonusPending)return;
+    if(state==='dead'){resurrect();return;}NRAudio.unlock();
     if (state === 'paused') {
       window.CJGameIntegration?.suspend();
       state = 'playing';
@@ -213,55 +220,31 @@
   pauseBtn.addEventListener('click', togglePause);
 
   // One free lane per row; adjacent safe lanes and spaced rows avoid traps.
-  function spawnObj(z=-150){
-    safeLane=clamp(safeLane+Math.floor(Math.random()*3)-1,0,2);
-    const count=dist>250&&wave%3===0?2:1;
-    const blocked=[0,1,2].filter(l=>l!==safeLane);
-    if(Math.random()<.5)blocked.reverse();
-    for(const l of blocked.slice(0,count))objects.push({lane:l,z,type:hazards[wave%4],hit:false});
-    for(let j=0;j<5;j++)objects.push({lane:safeLane,z:z+5-j*2.3,type:'crystal',hit:false});
-    if(wave%3===1)objects.push({lane:safeLane,z:z-9,type:['board','magnet','surcharge'][Math.floor(wave/3)%3],hit:false});
-    if(wave%4===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,...available[0]});}
-    wave++;
-  }
+  function spawnObj(z=-150){const row=NRTrack.row({distance:dist,wave,safe:safeLane,z,speed});safeLane=row.safe;for(const item of row.items)objects.push({...item,safe:row.safe,id:++sequence,hit:false});if(wave%4===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,id:++sequence,...available[0]});}wave++;return row.spacing;}
   function update(dt){
-    wordToastTime=Math.max(0,wordToastTime-dt);
-    collectedFragments=collectedFragments.filter(f=>(f.time-=dt)>0);
-    px+=(lane-px)*Math.min(1,dt*15);
-    const base=Math.min(.73,.34+dist/7000);
-    speed=base*(propulsion>0?1.22+NRProfile.levels.propulsion*.035:1);
-    const advance=dt*speed*25;
-    dist+=advance*2;score+=advance*10*(surcharge>0?2:1);
-    scroll+=dt*speed;frame+=dt*10;
-    board=Math.max(0,board-dt);magnet=Math.max(0,magnet-dt);surcharge=Math.max(0,surcharge-dt);propulsion=Math.max(0,propulsion-dt);
-    jump=Math.max(0,jump-dt);slide=Math.max(0,slide-dt);stun=Math.max(0,stun-dt);
-    spawn-=advance;
-    if(spawn<=0){spawnObj();spawn=dist>250?22:26;}
-    for(const o of objects){
-      const previous=o.z;o.z+=advance;
-      const close=Math.abs(px-o.lane)<.40;
-      const collect=o.type==='crystal'&&(close||magnet>0);
-      const crossing=previous<2.4&&o.z>=2.4;
-      if(!o.hit&&((crossing&&(close||collect))||(magnet>0&&o.type==='crystal'&&o.z>-7&&o.z<2.4))){
-        o.hit=true;
-        if(o.type==='crystal'){if(magnet>0){const q=projectWorld((o.lane-1)*3.66,1.05,o.z);if(q)collectedFragments.push({x:q.x,y:q.y,time:.45});}orbs++;score+=10*(surcharge>0?2:1);NRProfile.sound(900);}
-        else if(o.type==='letter'){const result=NRProfile.collectLetter(o);if(result){wordToast=result;wordToastTime=4;score+=50;NRProfile.sound(1100);}}
-        else if(o.type==='board'){board=duration('board');NRProfile.sound(500);}
-        else if(o.type==='magnet'){magnet=duration('magnet');NRProfile.sound(700);}
-        else if(o.type==='surcharge'){surcharge=duration('surcharge');NRProfile.sound(800);}
-        else if(hazards.includes(o.type)){
-          const airborne=jump>0&&Math.sin((.85-jump)/.85*Math.PI)>.48;
-          const avoided=(o.type==='crate'||o.type==='barrier')&&airborne||o.type==='laser'&&slide>.08;
-          if(avoided){runStats.dodges++;score+=25;}
-          else if(board>0){board=0;stun=1.2;NRProfile.sound(160);}
-          else if(stun<=0){finish();return;}
-        }
-      }else if(crossing&&!o.hit&&hazards.includes(o.type)){o.hit=true;runStats.dodges++;}
-    }
-    objects=objects.filter(o=>o.z<12);
-    document.querySelector('#boost-control').disabled=!chargeReady;
-    document.querySelector('#boost-control').textContent=propulsion>0?'PROPULSION '+Math.ceil(propulsion)+'s':chargeReady?'⚡ BOOST · B':'BOOST UTILISÉ';
+    if(bonusPending&&state==='playing')return;
+    if(state==='falling'){fallTime-=dt;if(fallTime<=0)offerRevive();return;}
+    wordToastTime=Math.max(0,wordToastTime-dt);recordFlash=Math.max(0,recordFlash-dt);invulnerable=Math.max(0,invulnerable-dt);collectedFragments=collectedFragments.filter(f=>(f.time-=dt)>0);px+=(lane-px)*Math.min(1,dt*15);
+    if(activeBonus){activeBonus.time-=dt;if(activeBonus.time<=0){activeBonus=null;cooldown=5;}}else cooldown=Math.max(0,cooldown-dt);
+    board=activeBonus?.type==='board'?activeBonus.time:0;magnet=activeBonus?.type==='magnet'?activeBonus.time:0;propulsion=activeBonus?.type==='propulsion'?activeBonus.time:0;surcharge=0;
+    speed=Math.min(.73,.34+dist/7000)*(board>0?1.12+NRProfile.levels.board*.012:1);const advance=dt*speed*25;
+    const previousDistance=dist;dist+=advance*2;score+=advance*10;scroll+=dt*speed;frame+=dt*10;jump=Math.max(0,jump-dt);slide=Math.max(0,slide-dt);
+    if(!newRecord&&dist>oldBest){newRecord=true;recordFlash=3;}
+    for(let milestone=Math.floor(previousDistance/1000)+1;milestone<=Math.floor(dist/1000);milestone++){orbs+=5;persist(NRStore.credit(runId,'distance:'+milestone,5));}
+    spawn-=advance;if(spawn<=0)spawn=spawnObj();
+    for(const o of objects){const previous=o.z;o.z+=advance;o.travel=(o.travel||0)+advance;const olane=o.type.startsWith('drone')?NRTrack.droneX(o):o.lane,delta=Math.abs(px-olane),close=delta<.40,crossing=previous<2.4&&o.z>=2.4;
+      const airborne=jump>0&&Math.sin((.85-jump)/.85*Math.PI)>.48;
+      const insideHazard=Math.abs(o.z-2.4)<=(['crate','container'].includes(o.type)?.9:.35);
+      const insideGap=o.type==='gap'&&o.z-o.length/2<=2.4&&o.z+o.length/2>=2.4;
+      if(hazards.includes(o.type)&&(o.type==='gap'||!o.hit)&&(((crossing||insideHazard)&&close&&o.type!=='gap')||(insideGap&&close))){const avoided=propulsion>0||invulnerable>0||(['crate','barrier','droneLow','gap'].includes(o.type)&&airborne)||(['laser','droneHigh'].includes(o.type)&&slide>.08);
+        if(avoided){if(o.type!=='gap')o.hit=true;if(!o.dodged){o.dodged=true;runStats.dodges++;score+=10;}}
+        else if(activeBonus?.type==='surge'&&o.type!=='gap'){activeBonus=null;cooldown=5;invulnerable=0;o.hit=true;NRProfile.sound(160);}
+        else{death(o.type==='gap');return;}
+      }else if(crossing&&!o.hit&&hazards.includes(o.type)){o.hit=true;runStats.dodges++;if(delta<.72&&propulsion<=0&&invulnerable<=0)persist(NRStore.near(runId,'near:'+o.id).then(ok=>{if(ok)orbs++;}));}
+      if(!o.hit&&!hazards.includes(o.type)&&((crossing&&close)||(magnet>0&&o.type==='crystal'&&o.z>-7&&o.z<2.4))){o.hit=true;if(o.type==='crystal'){const amount=o.value||1;orbs+=amount;persist(NRStore.credit(runId,'fragment:'+o.id,amount));if(magnet>0){const q=projectWorld((o.lane-1)*3.66,1.05,o.z);if(q)collectedFragments.push({x:q.x,y:q.y,time:.45});}NRProfile.sound(900);}else if(o.type==='letter')persist(NRProfile.collectLetter(o).then(result=>{if(result){wordToast=result;wordToastTime=4;}}));else if(NRStore.types.includes(o.type))persist(NRStore.pickup(runId,'pickup:'+o.id,o.type).then(ok=>{if(ok){wordToast='Bonus ajouté au stock · à équiper pour la prochaine course';wordToastTime=3;}}));}
+    }objects=objects.filter(o=>o.z<12);updateBonusControls();
   }
+  function updateBonusControls(){const remaining=runId?NRProfile.runs[runId]?.remaining:{};document.querySelectorAll('[data-bonus]').forEach(b=>{const t=b.dataset.bonus,n=Math.min(remaining?.[t]||0,NRProfile.inventory[t]);b.disabled=state!=='playing'||!!activeBonus||cooldown>0||bonusPending||n<1;b.textContent={magnet:'1 · Aimant',board:'2 · Planche',surge:'3 · Surge',propulsion:'4 · Vol'}[t]+' · '+n;});document.querySelector('#bonus-status').textContent=activeBonus?({magnet:'Aimant',board:'Planche',surge:'Surge',propulsion:'Vol'}[activeBonus.type])+' '+Math.ceil(activeBonus.time)+'s':cooldown>0?'Recharge '+Math.ceil(cooldown)+'s':'Un seul bonus à la fois';}
 
   function background() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -324,7 +307,7 @@
 
   function road() {
     if (window.NR3D) {
-      ctx.drawImage(window.NR3D.render(scroll, speed, objects), 0, 0);
+      ctx.drawImage(window.NR3D.render(scroll, speed, objects), 0, 0, W, H);
     } else {
       const top = roadPoint(0), bottom = roadPoint(1);
       ctx.beginPath();
@@ -484,24 +467,25 @@
     for(const o of objects.slice().sort((a,b)=>a.z-b.z)){
       if(o.hit||o.z>10)continue;
       if(o.type==='letter'&&(o.wordId!==NRProfile.word.completed||NRProfile.word.found[o.slot]))continue;
-      if(window.NR3D&&hazards.includes(o.type))continue;
+      if(window.NR3D&&hazards.includes(o.type)&&!o.type.startsWith('drone'))continue;
       const pos=projectWorld((o.lane-1)*3.66,(o.type==='crystal'||o.type==='letter')?1.05:0,o.z);if(!pos)continue;
       const size=95*Math.max(.12,Math.min(2.2,pos.scale));
-      if(o.type==='crystal'){
+      if(o.type.startsWith('drone')){const q=projectWorld((NRTrack.droneX(o)-1)*3.66,o.type==='droneLow'?1:2.5,o.z);if(!q)continue;const h=120*q.scale,ds=imageSize('drone',h);draw('drone',q.x-ds.w/2,q.y-h/2,ds.w,h);text(o.type==='droneLow'?'↑':'↓',q.x,q.y-h*.6,Math.max(12,h*.3),'center',o.type==='droneLow'?'#67efff':'#ff6fdc');if(o.z<-25)text((Math.floor((o.travel+6)/24)%2===0?'→':'←'),q.x,q.y+h*.8,Math.max(12,h*.25),'center','#ffe399');
+      }else if(o.type==='crystal'){
         ctx.save();ctx.translate(pos.x,pos.y);ctx.shadowColor='#e84cff';ctx.shadowBlur=NRProfile.options.quality==='low'?0:18;
-        ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(size*.28,0);ctx.lineTo(0,size*.4);ctx.lineTo(-size*.28,0);ctx.closePath();ctx.fillStyle='#c42af1';ctx.fill();ctx.strokeStyle='#ffe0ff';ctx.lineWidth=Math.max(1,size*.025);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(0,size*.4);ctx.lineTo(size*.28,0);ctx.stroke();ctx.restore();
+        ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(size*.28,0);ctx.lineTo(0,size*.4);ctx.lineTo(-size*.28,0);ctx.closePath();ctx.fillStyle=o.value===5?'#eaa33d':'#c42af1';ctx.fill();ctx.strokeStyle='#ffe0ff';ctx.lineWidth=Math.max(1,size*.025);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(0,size*.4);ctx.lineTo(size*.28,0);ctx.stroke();ctx.restore();
        }else if(o.type==='letter'){
-        ctx.save();ctx.translate(pos.x,pos.y);ctx.strokeStyle='#ffe09b';ctx.fillStyle='#352746';ctx.shadowColor='#f8c954';ctx.shadowBlur=18;ctx.lineWidth=Math.max(1,size*.025);ctx.beginPath();ctx.roundRect(-size*.36,-size*.53,size*.72,size*.85,size*.12);ctx.fill();ctx.stroke();text(o.letter,0,size*.10,size*.6,'center','#ffe4a0');ctx.restore();
+        ctx.save();ctx.translate(pos.x,pos.y);ctx.strokeStyle='#ffe09b';ctx.fillStyle='#352746';ctx.shadowColor='#f8c954';ctx.shadowBlur=NRProfile.options.quality==='low'?0:18;ctx.lineWidth=Math.max(1,size*.025);ctx.beginPath();ctx.roundRect(-size*.36,-size*.53,size*.72,size*.85,size*.12);ctx.fill();ctx.stroke();text(o.letter,0,size*.10,size*.6,'center','#ffe4a0');ctx.restore();
       }else if(o.type==='board'){ctx.save();ctx.translate(pos.x,pos.y-size*.3);ctx.scale(size/160,size/160);hoverboard(0,0);ctx.restore();
       }else if(!hazards.includes(o.type)){
         ctx.fillStyle='#11172d';ctx.strokeStyle=o.type==='board'?'#bc56ff':'#53efff';ctx.lineWidth=3;ctx.fillRect(pos.x-size*.45,pos.y-size,size*.9,size*.9);ctx.strokeRect(pos.x-size*.45,pos.y-size,size*.9,size*.9);
-        text(o.type==='board'?'◆':o.type==='magnet'?'∩':'×2',pos.x,pos.y-size*.35,size*.43,'center');
+        draw(o.type==='magnet'?'magnet':o.type==='surge'?'shield':'boost',pos.x-size*.36,pos.y-size*.87,size*.72,size*.72);
       }else draw(o.type==='laser'?'barrier':'post',pos.x-size/2,pos.y-size,size,size);
     }
   }
 
   function hoverboard(x,y){
-    ctx.save();ctx.translate(x,y);ctx.shadowColor='#43e9ff';ctx.shadowBlur=18;
+    ctx.save();ctx.translate(x,y);ctx.shadowColor='#43e9ff';ctx.shadowBlur=NRProfile.options.quality==='low'?0:18;
     // Foreshortened deck with a visible thickness: both feet rest on its top.
     ctx.beginPath();ctx.moveTo(-112,-8);ctx.lineTo(-70,-25);ctx.lineTo(80,-25);ctx.lineTo(116,-5);ctx.lineTo(90,21);ctx.lineTo(-84,21);ctx.closePath();ctx.fillStyle='#121b35';ctx.fill();ctx.strokeStyle='#bb55ff';ctx.lineWidth=4;ctx.stroke();
     ctx.beginPath();ctx.moveTo(-112,-8);ctx.lineTo(-84,8);ctx.lineTo(90,8);ctx.lineTo(116,-5);ctx.lineTo(90,21);ctx.lineTo(-84,21);ctx.closePath();ctx.fillStyle='#34225a';ctx.fill();ctx.strokeStyle='#56efff';ctx.lineWidth=3;ctx.stroke();
@@ -510,15 +494,15 @@
     ctx.restore();
   }
   function companion(x,y){
-    const cx=x+135,cy=y-155+Math.sin(frame*.8)*8;
+    const cx=x+(x>CX?-105:105),cy=y-130+Math.sin(frame*.8)*8;
     ctx.save();
     // Collected fragments travel to the companion before fading.
     for(const f of collectedFragments){const t=1-f.time/.45,e=1-Math.pow(1-t,2),fx=f.x+(cx-f.x)*e,fy=f.y+(cy-f.y)*e;
       ctx.globalAlpha=1-t*.5;ctx.strokeStyle='#dd5aff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(fx-8,fy);ctx.lineTo(fx,fy-15);ctx.lineTo(fx+8,fy);ctx.lineTo(fx,fy+12);ctx.closePath();ctx.stroke();
     }
     ctx.globalAlpha=1;
-    if(NRProfile.pet==='cat'&&img.catSheet.complete&&img.catSheet.naturalWidth){const index=collectedFragments.length?1:Math.floor(frame/3)%4;drawSprite(img.catSheet,NRSPRITES.cat.frames[index],cx,cy+44,95*NRSPRITES.cat.frames[index][3]/NRSPRITES.cat.frames[0][3]);ctx.restore();return;}
-    ctx.translate(cx,cy);ctx.shadowColor='#6debff';ctx.shadowBlur=15;
+    if(NRProfile.pet==='cat'&&img.catSheet.complete&&img.catSheet.naturalWidth){const index=collectedFragments.length?1:Math.floor(frame/3)%4;drawSprite(img.catSheet,NRSPRITES.cat.frames[index],cx,cy+35,75*NRSPRITES.cat.frames[index][3]/NRSPRITES.cat.frames[0][3]);ctx.restore();return;}
+    ctx.translate(cx,cy);ctx.shadowColor='#6debff';ctx.shadowBlur=NRProfile.options.quality==='low'?0:15;
     ctx.fillStyle='#152943';ctx.strokeStyle='#64eaff';ctx.lineWidth=2.5;
     ctx.beginPath();ctx.roundRect(-25,-33,50,39,12);ctx.fill();ctx.stroke();
     ctx.fillStyle='#050e20';ctx.fillRect(-17,-21,34,17);ctx.fillStyle='#70f3ff';for(const dx of [-10,10])ctx.fillRect(dx-3,-16,6,7);
@@ -535,20 +519,21 @@
   }
   function player(){
     const foot=projectWorld((px-1)*3.66,0,2.4),x=foot?foot.x:CX+(px-1)*215,ground=foot?foot.y:1106;
-    let h=365,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
-    if(jump>0)im=img.jump;
-    else if(slide>0){im=img.slide;h=210;}
+    let h=285,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
+    if(jump>0||propulsion>0)im=img.jump;
+    else if(slide>0){im=img.slide;h=164;}
     else if(state==='over')im=img.idle;
-    const lift=jump>0?Math.sin((.85-jump)/.85*Math.PI)*155:0;
+    const lift=propulsion>0?230:jump>0?Math.sin((.85-jump)/.85*Math.PI)*155:0;
     const hover=board>0?12+Math.sin(frame*.65)*3:0;
-    const feet=ground-lift-hover;
+    const feet=ground-lift-hover+(state==='falling'?(1-fallTime/.5)*360:0);
     ctx.fillStyle='rgba(5,8,20,.42)';ctx.beginPath();ctx.ellipse(x,ground+5,board>0?105:70,15,0,0,Math.PI*2);ctx.fill();
-    if(board>0)hoverboard(x,feet+14);
+    if(board>0){ctx.save();ctx.translate(x,feet+10);ctx.scale(.78,.78);hoverboard(0,0);ctx.restore();}
     if(NRProfile.character==='nova'&&img.novaSheet.complete&&img.novaSheet.naturalWidth){
-      const pose=jump>0?3:slide>0?4:board>0||state==='over'?0:1+Math.floor(frame/2)%2;
+      const pose=(jump>0||propulsion>0)?3:slide>0?4:board>0||state==='over'?0:1+Math.floor(frame/2)%2;
       const rect=NRSPRITES.nova.frames[pose];
-      drawSprite(img.novaSheet,rect,x,feet,pose===4?210:365*rect[3]/NRSPRITES.nova.frames[0][3]);
-    }else{const {w}=imageSize(im,h);draw(im,x-w/2,feet-h,w,h);}
+      drawSprite(img.novaSheet,rect,x,feet,pose===4?164:285*rect[3]/NRSPRITES.nova.frames[0][3]);
+    }else{const {w}=imageSize(im,h),scale=Math.min(1,2*Math.min(x-12,W-12-x)/w);draw(im,x-w*scale/2,feet-h*scale,w*scale,h*scale);}
+    if(activeBonus?.type==='surge')draw('shield',x-30,feet-h-50,60,60);
     if(magnet>0)companion(x,feet);
   }
 
@@ -559,12 +544,14 @@
     text(`${Math.floor(dist)} m`, W - 28, 53, 35, 'right', '#6cefff');
     text(`◈ ${orbs}       SCORE ${Math.floor(score)}`, 29, 99, 26);
     text(`RECORD ${best} m`, W - 28, 99, 23, 'right', '#cba3ff');
-    if (board > 0) {
+    if (false) {
       ctx.fillStyle = '#1c1f45';
       ctx.fillRect(220, 160, 460, 18);
       ctx.fillStyle = '#4adeff';
       ctx.fillRect(220, 160, 460 * (board / duration('board')), 18);
     }
+    if(recordFlash>0){ctx.strokeStyle='#fff19a';ctx.lineWidth=3;ctx.strokeRect(12,130,W-24,58);}
+    const remainingRecord=Math.max(0,Math.floor(oldBest-dist)+1);text(newRecord?'NOUVEAU RECORD !':'RECORD : encore '+remainingRecord+' m',450,155,23,'center',newRecord?'#fff19a':'#9deafa');ctx.fillStyle='#26334d';ctx.fillRect(225,170,450,8);ctx.fillStyle='#66dcef';ctx.fillRect(225,170,450*Math.min(1,dist/Math.max(1,oldBest)),8);
     let y=220;for(const [name,t] of [['PLANCHE',board],['AIMANT',magnet],['SCORE ×2',surcharge],['PROPULSION',propulsion]])if(t>0){text(name+' '+Math.ceil(t)+'s',35,y,25,'left','#6cf2ff');y+=35;}
     const letters=NRProfile.currentWord().letters,found=NRProfile.word.found;
     text('MOT DE LA CITÉ',450,1300,17,'center','#e6ca8c');
@@ -583,17 +570,18 @@
   }
 
   function loop(now) {
-    if (state !== 'playing') return;
+    if (!['playing','falling'].includes(state)) return;
     window.CJGameIntegration?.tick(now, 'runner');
     const dt = Math.min(0.045, (now - last) / 1000 || 0.016);
     last = now;
     update(dt);
     render();
-    if (state === 'playing') requestAnimationFrame(loop);
+    if (['playing','falling'].includes(state)) requestAnimationFrame(loop);
   }
 
-  window.NRGame={preview(){if(state!=='playing')render();},home(){if(state==='playing')return;state='menu';showOverlay('LA CITÉ T’ATTEND','JOUER');msg.textContent='Trois voies. Une cité. Repousse tes limites.';pauseBtn.classList.add('hidden');document.querySelector('#boost-control').classList.add('hidden');render();},activateBoost};
-  document.querySelector('#boost-control').addEventListener('click',activateBoost);
+  window.NRGame={preview(){if(state!=='playing')render();},home(){if(state==='playing')return;state='menu';showOverlay('LA CITÉ T’ATTEND','JOUER');msg.textContent='Trois voies. Une cité. Repousse tes limites.';pauseBtn.classList.add('hidden');document.querySelector('#bonus-controls').classList.add('hidden');render();},activateBoost};
+  document.querySelectorAll('[data-bonus]').forEach(b=>b.addEventListener('click',()=>activateBonus(b.dataset.bonus)));
+  for(const event of ['blur','pagehide'])window.addEventListener(event,()=>{if(state==='playing')togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')togglePause();});
   objects=[{lane:0,z:-18,type:'crate',hit:false},{lane:2,z:-34,type:'laser',hit:false},{lane:1,z:-57,type:'container',hit:false},...Array.from({length:6},(_,i)=>({lane:1,z:-12-i*4,type:'crystal',hit:false}))];
   objects.push({lane:2,z:-15,type:'letter',hit:false,...NRProfile.nextLetter()});
   render();
