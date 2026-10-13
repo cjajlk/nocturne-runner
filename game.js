@@ -519,9 +519,9 @@
   }
   function player(){
     const foot=projectWorld((px-1)*3.66,0,2.4),x=foot?foot.x:CX+(px-1)*215,ground=foot?foot.y:1106;
-    let h=285,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
+    let h=180,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
     if(jump>0||propulsion>0)im=img.jump;
-    else if(slide>0){im=img.slide;h=164;}
+    else if(slide>0){im=img.slide;h=104;}
     else if(state==='over')im=img.idle;
     const lift=propulsion>0?230:jump>0?Math.sin((.85-jump)/.85*Math.PI)*155:0;
     const hover=board>0?12+Math.sin(frame*.65)*3:0;
@@ -531,7 +531,7 @@
     if(NRProfile.character==='nova'&&img.novaSheet.complete&&img.novaSheet.naturalWidth){
       const pose=(jump>0||propulsion>0)?3:slide>0?4:board>0||state==='over'?0:1+Math.floor(frame/2)%2;
       const rect=NRSPRITES.nova.frames[pose];
-      drawSprite(img.novaSheet,rect,x,feet,pose===4?164:285*rect[3]/NRSPRITES.nova.frames[0][3]);
+      drawSprite(img.novaSheet,rect,x,feet,pose===4?104:180*rect[3]/NRSPRITES.nova.frames[0][3]);
     }else{const {w}=imageSize(im,h),scale=Math.min(1,2*Math.min(x-12,W-12-x)/w);draw(im,x-w*scale/2,feet-h*scale,w*scale,h*scale);}
     if(activeBonus?.type==='surge')draw('shield',x-30,feet-h-50,60,60);
     if(magnet>0)companion(x,feet);
