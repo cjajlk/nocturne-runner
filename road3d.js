@@ -95,7 +95,7 @@ function city(scroll){
  }
 }
 
-function obstacles(list){for(const o of list||[]){if(o.hit||o.z>12)continue;const x=(o.lane-1)*3.66,z=o.z;
+function obstacles(list){for(const o of list||[]){if(o.destroyed||o.z>12)continue;const x=(o.lane-1)*3.66,z=o.z;
  const dark=[.08,.10,.17,1],metal=[.24,.23,.33,1],pink=[.94,.16,.76,1],cyan=[.15,.87,.97,1];
  if(o.type==='gap'){const half=o.length/2;for(const dz of [-half,half])box(x-1.78,.09,z+dz-.06,x+1.78,.14,z+dz+.06,cyan);continue;}
  if(o.type==='crate'||o.type==='container'){

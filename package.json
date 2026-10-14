@@ -4,7 +4,8 @@
   "private": true,
   "description": "Nocturne Runner browser prototype",
   "scripts": {
-    "test": "node tests/v1-smoke.cjs"
+    "test": "node tests/v1-smoke.cjs",
+    "test:ui": "node tests/ui-v1-smoke.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
