@@ -153,6 +153,7 @@
   async function offerRevive(){state='checking';try{await NRStore.flush();if(!revived&&NRStore.read().wallet>=50){state='dead';showOverlay('UNE SECONDE CHANCE','REVENIR · 50 ◈');msg.innerHTML='<p>Reprends à la même distance avec 2 secondes de protection.</p><button id="refuse-revive">Terminer la course</button>';document.querySelector('#refuse-revive').onclick=()=>finish();}else finish();}catch(e){state='paused';storeError(e);}}
   async function resurrect(){if(state!=='dead'||bonusPending)return;bonusPending=true;try{if(!await NRStore.revive(runId)){bonusPending=false;return finish();}revived=true;invulnerable=2;objects=objects.filter(o=>!hazards.includes(o.type)||o.z<-30||o.z>9);jump=slide=0;state='playing';overlay.classList.add('hidden');last=performance.now();requestAnimationFrame(loop);}catch(e){storeError(e);}finally{bonusPending=false;}}
   function showOverlay(title,label){
+    overlay.classList.toggle('arcade-home',state==='menu');
     document.querySelector('#screen-title').textContent=title;
     document.querySelector('#home-screen').hidden=false;
     document.querySelector('#detail-screen').hidden=true;
@@ -565,6 +566,7 @@
     road();
     scenery();
     entities();
+    if(state==='menu')window.NRHomeArt?.paint(c,img,NRProfile.character);
     player();
     hud();
   }

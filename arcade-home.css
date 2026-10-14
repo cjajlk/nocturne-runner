@@ -1,0 +1,35 @@
+/* Arcade poster: scoped to the home only. Course and secondary panels keep their layout. */
+.arcade-stage{display:none;position:fixed;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,#31105b,#070919 75%)}
+.arcade-home.immersive .arcade-stage{display:block}
+#home-art{position:absolute;left:50%;top:0;transform:translateX(-50%);height:100%;width:auto;max-width:none;object-fit:contain;filter:saturate(1.18) contrast(1.06)}
+.arcade-vignette{position:absolute;inset:0;background:linear-gradient(180deg,#050411bb 0%,#08071b22 27%,transparent 50%,#07071311 66%,#070713f2 88%),linear-gradient(90deg,#08081b88,transparent 30% 70%,#08081b88)}
+.arcade-streaks{position:absolute;inset:0;opacity:.6;animation:arcade-rush 3.8s ease-in-out infinite alternate}
+.arcade-streaks i{position:absolute;width:2px;height:27%;left:10%;top:47%;background:linear-gradient(transparent,#5cf0ff,transparent);transform:rotate(40deg);box-shadow:0 0 10px #4deaff}
+.arcade-streaks i:nth-child(2){left:22%;top:58%;height:30%;transform:rotate(30deg);background:linear-gradient(transparent,#d544ff,transparent)}
+.arcade-streaks i:nth-child(3){left:4%;top:21%;height:12%;transform:rotate(60deg)}
+.arcade-streaks i:nth-child(4){left:90%;top:47%;transform:rotate(-40deg)}
+.arcade-streaks i:nth-child(5){left:78%;top:58%;height:30%;transform:rotate(-30deg);background:linear-gradient(transparent,#e24dff,transparent)}
+.arcade-streaks i:nth-child(6){left:96%;top:21%;height:12%;transform:rotate(-60deg)}
+#overlay.arcade-home.immersive{background:none;backdrop-filter:none}
+.arcade-home.immersive .panel{z-index:1;width:min(100%,1040px);height:100%;max-height:100%;padding:0 14px;overflow:visible;display:block}
+.arcade-home.immersive header{position:absolute;left:14px;right:14px;top:0;min-height:38px;z-index:2}
+.arcade-home.immersive header>.eyebrow{font-size:10px;letter-spacing:3px;color:#86cbe1}.arcade-home.immersive .wallet{background:#13132be6;border-color:#8561b9;font-size:13px;padding:8px 12px}
+.arcade-home.immersive #home-screen{position:relative;display:block;height:100%;text-align:center}
+.arcade-home.immersive .brand{position:absolute;top:51px;left:50%;transform:translateX(-50%) skew(-5deg);width:max-content;max-width:100%;margin:0;line-height:.95;font-size:clamp(39px,7.2vw,79px);letter-spacing:-2.5px;text-shadow:2px 3px 0 #47287a,-1px -1px #b1faff,0 0 25px #b12bf877;animation:arcade-title 5s ease-in-out infinite alternate}
+.arcade-home.immersive .brand strong{display:block;font-weight:950;color:#f2efff}.arcade-home.immersive .brand span{font-size:.8em;letter-spacing:.19em;margin:7px 0 0 .19em;color:#87eeff;text-shadow:2px 3px 0 #4e2685,0 0 20px #4fe7ff77}
+.arcade-home.immersive .brand::after{content:'';display:block;height:3px;margin:13px auto 0;width:80%;background:linear-gradient(90deg,transparent,#e856ff,#75efff,transparent);transform:skew(-35deg)}
+.arcade-home.immersive #screen-title{position:absolute;left:0;right:0;top:calc(51px + clamp(39px,7.2vw,79px)*1.9 + 26px);width:auto;font-size:10px;letter-spacing:4px;color:#b8d8f1}
+.arcade-home.immersive #msg{position:absolute;left:50%;bottom:179px;transform:translateX(-50%);width:100%;max-width:none;margin:0;padding:0;background:none;border-radius:0;color:#dbd8ec;font-size:12px;letter-spacing:.5px;text-shadow:0 2px 8px #000}
+.arcade-home.immersive .primary{position:absolute;bottom:102px;left:50%;right:auto;transform:translateX(-50%) skew(-5deg);width:min(100%,380px);max-width:380px;min-height:62px;justify-content:center;align-items:center;gap:40px;padding:16px 24px;border:1px solid #eda7ff;border-radius:9px;background:linear-gradient(105deg,#7925e7,#c135ef 50%,#54e3f6);font-size:21px;font-weight:950;letter-spacing:5px;box-shadow:0 0 25px #a234f84d,inset 0 1px 0 #ffffff66;transition:filter .2s,box-shadow .2s}
+.arcade-home.immersive .primary::after{content:'››';font-size:27px;line-height:1;letter-spacing:-3px;color:#fff8}.arcade-home.immersive .primary:hover{filter:brightness(1.16);box-shadow:0 0 35px #a234f880}.arcade-home.immersive .primary:active{filter:brightness(.9)}.arcade-home.immersive .primary span{display:none}
+.arcade-home.immersive .secondary{position:absolute;left:50%;right:auto;bottom:48px;transform:translateX(-50%);margin:0;width:160px;min-height:44px;background:#11182bc9;border:1px solid #6e85b8;border-radius:8px;font-size:12px;letter-spacing:3px}
+.arcade-home.immersive .home-best{position:absolute;left:0;right:0;bottom:26px;width:auto;font-size:11px;color:#c5c6e5;letter-spacing:1px}
+.arcade-home.immersive .universal-player{display:block;position:absolute;left:0;right:0;bottom:0;margin:0;max-width:none;width:auto;font-size:10px;line-height:1.6;color:#a7a7c2;white-space:nowrap}.arcade-home.immersive .universal-player strong{display:inline-block;max-width:100px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;white-space:nowrap}
+.arcade-home.immersive .hint{display:none}.arcade-home.immersive #notice{position:absolute;top:40%;left:0;right:0;background:#100b22d9;border-radius:8px}.arcade-home #notice:empty{display:none}
+@keyframes arcade-title{from{filter:brightness(1)}to{filter:brightness(1.12)}}@keyframes arcade-rush{from{transform:scale(.97);opacity:.35}to{transform:scale(1.05);opacity:.65}}
+@media(min-width:900px) and (min-height:501px){#home-art{height:104%;top:-4%}.arcade-home.immersive .brand{font-size:76px;top:38px}.arcade-home.immersive #screen-title{top:218px}.arcade-home.immersive #msg{bottom:182px}}
+@media(max-height:700px) and (min-height:501px){.arcade-home.immersive .brand{top:43px;font-size:36px}.arcade-home.immersive #screen-title{top:148px}.arcade-home.immersive #msg{bottom:165px}.arcade-home.immersive .primary{bottom:96px;min-height:56px}.arcade-home.immersive .secondary{bottom:44px}.arcade-home.immersive .home-best{bottom:23px}.arcade-home.immersive .universal-player{font-size:9px}}
+@media(max-height:500px) and (min-width:600px){#home-art{height:125%;top:-12%;left:50%}.arcade-home.immersive .brand{left:0;top:65px;transform:skew(-5deg);font-size:clamp(30px,4.4vw,42px);width:31%;max-width:none;letter-spacing:-1px}.arcade-home.immersive #screen-title{left:0;right:auto;top:174px;width:31%;font-size:9px;letter-spacing:2px}.arcade-home.immersive #msg{display:none}.arcade-home.immersive .primary{left:auto;right:0;bottom:107px;transform:skew(-5deg);width:29%;font-size:18px;gap:15px;min-height:56px;padding:12px}.arcade-home.immersive .secondary{left:auto;right:0;bottom:53px;transform:none;width:29%}.arcade-home.immersive .home-best{left:auto;right:0;bottom:30px;width:29%}.arcade-home.immersive .universal-player{left:0;right:auto;bottom:23px;width:34%;font-size:9px;white-space:normal}.arcade-home.immersive .universal-player strong{max-width:75px}}
+@media(prefers-reduced-motion:reduce){.arcade-home.immersive .brand,.arcade-streaks{animation:none!important}.arcade-home.immersive .primary{transition:none}}
+/* Blend the existing city into the wide poster rather than exposing canvas edges. */
+#home-art{mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
