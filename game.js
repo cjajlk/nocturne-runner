@@ -8,9 +8,9 @@
   const btn = document.querySelector('#start');
   const pauseBtn = document.querySelector('#pause');
 
-  const W = 900;
+  let W = 900;
   const H = 1400;
-  const CX = W / 2;
+  let CX = W / 2;
 
   let state = 'menu';
   window.getGameState = () => ({
@@ -184,13 +184,19 @@
     if(e.key.toLowerCase()==='b')activateBoost();const bonusKeys={1:'magnet',2:'board',3:'surge',4:'propulsion'};if(bonusKeys[e.key])activateBonus(bonusKeys[e.key]);
   });
 
-  let sx = 0, sy = 0;
-  c.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; });
-  c.addEventListener('pointerup', e => {
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    if (Math.abs(dx) < 23 && Math.abs(dy) < 23) return;
-    control(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
+  let gesture=null;
+  c.addEventListener('pointerdown',e=>{
+    if(state!=='playing'||gesture||e.button>0)return;
+    gesture={id:e.pointerId,x:e.clientX,y:e.clientY};
+    try{c.setPointerCapture(e.pointerId);}catch{}
   });
+  c.addEventListener('pointerup',e=>{
+    if(!gesture||gesture.id!==e.pointerId)return;
+    const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y;gesture=null;
+    if(Math.abs(dx)<23&&Math.abs(dy)<23)return;
+    control(Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down'));
+  });
+  for(const event of ['pointercancel','lostpointercapture'])c.addEventListener(event,e=>{if(gesture?.id===e.pointerId)gesture=null;});
 
   btn.addEventListener('click', () => {
     if(storageBlocked){location.reload();return;}if(['starting','checking','finishing','falling'].includes(state)||bonusPending)return;
@@ -294,7 +300,9 @@
     ctx.arc(700,145,26,0,Math.PI*2);
     ctx.fill();
 
-    // Far skyline kept very simple.
+    ctx.save();
+    if(document.body.classList.contains('mobile-course'))ctx.translate(0,projectWorld(0,0,-240).y-380);
+    // Far skyline follows the street horizon on the low mobile camera.
     const blocks = [
       [40,250,60,130],[115,215,88,165],[225,235,55,145],[305,190,95,190],[430,230,72,150],
       [540,200,110,180],[690,225,70,155],[790,205,65,175]
@@ -315,6 +323,7 @@
     haze.addColorStop(1, 'rgba(15,11,36,0.02)');
     ctx.fillStyle = haze;
     ctx.fillRect(0, 300, W, 300);
+    ctx.restore();
   }
 
   function road() {
@@ -530,22 +539,31 @@
     const width=height*rect[2]/rect[3];ctx.drawImage(image,rect[0],rect[1],rect[2],rect[3],x-width/2,feet-height,width,height);
   }
   function player(){
-    const foot=projectWorld((px-1)*3.66,0,2.4),x=foot?foot.x:CX+(px-1)*215,ground=foot?foot.y:1106;
-    let h=180,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
+    const mobile=document.body.classList.contains('mobile-course'),worldX=(px-1)*3.66;
+    const foot=projectWorld(worldX,0,2.4),ground=foot?foot.y:1106;
+    const jumpArc=jump>0?Math.sin((.85-jump)/.85*Math.PI):0;
+    // A world-space body and jump follow the chase camera, instead of retaining
+    // a fixed screen size while the rest of the scene moves into the distance.
+    const worldLift=(propulsion>0?5.4:jumpArc*3.6)+(board>0?.25+Math.sin(frame*.65)*.06:0);
+    const raised=mobile?projectWorld(worldX,worldLift,2.4):null;
+    const x=raised?raised.x:foot?foot.x:CX+(px-1)*215;
+    const actorHeight=mobile?raised.y-projectWorld(worldX,worldLift+2.3,2.4).y:180;
+    const groundScale=mobile?(ground-projectWorld(worldX,2.3,2.4).y)/180:1;
+    let h=actorHeight,im=board>0?img.idle:img.run[Math.floor(frame/2)%img.run.length];
     if(jump>0||propulsion>0)im=img.jump;
-    else if(slide>0){im=img.slide;h=104;}
+    else if(slide>0){im=img.slide;h=mobile?raised.y-projectWorld(worldX,worldLift+1.65,2.4).y:104;}
     else if(state==='over')im=img.idle;
     const lift=propulsion>0?230:jump>0?Math.sin((.85-jump)/.85*Math.PI)*155:0;
     const hover=board>0?12+Math.sin(frame*.65)*3:0;
-    const feet=ground-lift-hover+(state==='falling'?(1-fallTime/.5)*360:0);
-    ctx.fillStyle='rgba(5,8,20,.42)';ctx.beginPath();ctx.ellipse(x,ground+5,board>0?105:70,15,0,0,Math.PI*2);ctx.fill();
-    if(board>0){ctx.save();ctx.translate(x,feet+10);ctx.scale(.78,.78);hoverboard(0,0);ctx.restore();}
+    const feet=(mobile?raised.y:ground-lift-hover)+(state==='falling'?(1-fallTime/.5)*360:0);
+    ctx.fillStyle=mobile?'rgba(5,8,20,.58)':'rgba(5,8,20,.42)';ctx.beginPath();ctx.ellipse(foot?.x||x,ground+(mobile?0:5),(board>0?105:mobile?52:70)*groundScale,(mobile?6:15)*groundScale,0,0,Math.PI*2);ctx.fill();
+    if(board>0){ctx.save();ctx.translate(x,feet+10);ctx.scale(.78*groundScale,.78*groundScale);hoverboard(0,0);ctx.restore();}
     if(NRProfile.character==='nova'&&img.novaSheet.complete&&img.novaSheet.naturalWidth){
       const pose=(jump>0||propulsion>0)?3:slide>0?4:board>0||state==='over'?0:1+Math.floor(frame/2)%2;
       const rect=NRSPRITES.nova.frames[pose];
-      drawSprite(img.novaSheet,rect,x,feet,pose===4?104:180*rect[3]/NRSPRITES.nova.frames[0][3]);
+      drawSprite(img.novaSheet,rect,x,feet,pose===4?h:actorHeight*rect[3]/NRSPRITES.nova.frames[0][3]);
     }else{const {w}=imageSize(im,h),scale=Math.min(1,2*Math.min(x-12,W-12-x)/w);draw(im,x-w*scale/2,feet-h*scale,w*scale,h*scale);}
-    if(activeBonus?.type==='surge')draw('shield',x-30,feet-h-50,60,60);
+    if(activeBonus?.type==='surge')draw('shield',x-30*groundScale,feet-h-50*groundScale,60*groundScale,60*groundScale);
     if(magnet>0)companion(x,feet);
   }
 
@@ -558,10 +576,25 @@
     document.getElementById('hud-score').textContent=Math.floor(score);
     const status=document.getElementById('record-status');status.textContent=newRecord?'NOUVEAU RECORD !':'Record : encore '+Math.max(0,Math.floor(oldBest-dist)+1)+' m';status.classList.toggle('record-flash',recordFlash>0);
     document.getElementById('record-progress').value=Math.min(1,dist/Math.max(1,oldBest));
-    if(wordToastTime>0){ctx.fillStyle='#121832e8';ctx.fillRect(80,275,740,58);text(wordToast,450,312,wordToast.length>45?20:25,'center','#ffe3a3');}
+    if(wordToastTime>0){ctx.fillStyle='#121832e8';if(document.body.classList.contains('mobile-course')){ctx.fillRect(30,210,W-60,58);text(wordToast,CX,247,Math.min(wordToast.length>45?20:25,(W-70)/Math.max(1,wordToast.length)*1.5),'center','#ffe3a3');}else{ctx.fillRect(80,275,740,58);text(wordToast,450,312,wordToast.length>45?20:25,'center','#ffe3a3');}}
   }
 
+  let viewMobile=null,viewDirty=true;
+  function configureView(){
+    const mobile=state!=='menu'&&matchMedia('(max-width:600px), (max-height:500px) and (pointer:coarse)').matches;
+    if(viewMobile===mobile&&!viewDirty)return;
+    viewMobile=mobile;viewDirty=false;
+    document.body.classList.toggle('mobile-course',mobile);
+    const bounds=document.querySelector('#app').getBoundingClientRect();
+    W=mobile?Math.round(H*bounds.width/Math.max(1,bounds.height)):900;CX=W/2;
+    const factor=Math.min(1,Math.sqrt(1260000/(W*H))),width=Math.round(W*factor),height=Math.round(H*factor);
+    if(c.width!==width||c.height!==height){c.width=width;c.height=height;}
+    ctx.setTransform(width/W,0,0,height/H,0,0);
+    window.NR3D?.resize(W,H,mobile);
+  }
   function render() {
+    configureView();
+    if(document.body.classList.contains('mobile-course'))window.NR3D?.resize(W,H,true,jump>0&&propulsion<=0?Math.sin((.85-jump)/.85*Math.PI)*1.8:0);
     background();
     road();
     scenery();
@@ -582,8 +615,17 @@
   }
 
   window.NRGame={preview(){if(state!=='playing')render();},home(){if(state==='playing')return;state='menu';showOverlay('LA CITÉ T’ATTEND','JOUER');msg.textContent='Trois voies. Une cité. Repousse tes limites.';pauseBtn.classList.add('hidden');document.querySelector('#bonus-controls').classList.add('hidden');render();},activateBoost};
-  document.querySelectorAll('[data-bonus]').forEach(b=>b.addEventListener('click',()=>activateBonus(b.dataset.bonus)));
+  document.querySelectorAll('[data-bonus]').forEach(b=>{
+    let origin=null,moved=false,pointerHandled=false;
+    b.addEventListener('pointerdown',e=>{origin={id:e.pointerId,x:e.clientX,y:e.clientY};moved=false;pointerHandled=false;if(e.pointerType==='touch'&&document.body.classList.contains('mobile-course'))try{b.setPointerCapture(e.pointerId);}catch{}});
+    const track=e=>{if(origin&&Math.hypot(e.clientX-origin.x,e.clientY-origin.y)>18)moved=true;};
+    b.addEventListener('pointermove',track);
+    b.addEventListener('pointerup',e=>{track(e);if(origin?.id===e.pointerId&&!moved&&e.button<=0&&e.pointerType==='touch'&&document.body.classList.contains('mobile-course')){pointerHandled=true;activateBonus(b.dataset.bonus);}origin=null;});
+    b.addEventListener('pointercancel',()=>{origin=null;moved=true;});
+    b.addEventListener('click',e=>{if(e.detail!==0&&(moved||pointerHandled)){e.preventDefault();pointerHandled=false;return;}activateBonus(b.dataset.bonus);});
+  });
   document.querySelectorAll('[data-direction]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();control(b.dataset.direction);}));
+  window.addEventListener('resize',()=>{viewDirty=true;if(state!=='playing'&&state!=='falling')render();});
   for(const event of ['blur','pagehide'])window.addEventListener(event,()=>{if(state==='playing')togglePause();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')togglePause();});
   objects=[{lane:0,z:-18,type:'crate',hit:false},{lane:2,z:-34,type:'laser',hit:false},{lane:1,z:-57,type:'container',hit:false},...Array.from({length:6},(_,i)=>({lane:1,z:-12-i*4,type:'crystal',hit:false}))];
   objects.push({lane:2,z:-15,type:'letter',hit:false,...NRProfile.nextLetter()});
