@@ -1,5 +1,13 @@
 # Bilan de développement Nocturne Runner V1
 
+## Évolution du 19 octobre 2026 — Obstacles et risque
+
+Les règles actuelles du parcours sont décrites dans README.md. Le générateur propose des séquences avec deux voies occupées plus tôt, des sauts/glissades parfois obligatoires et annoncés, des récupérations courtes et des fragments dorés réellement conditionnés à une action. Une route franchissable avec les commandes de base reste prévue ; elle ne reste plus toujours vide.
+
+Validation : 22 500 rangées contrôlées, simulation de 50 km sans bonus et trois autres simulations de 20 km (dont une au boost maximal), actions obligatoires vérifiées sur les trois voies, récompenses à risque et aimant testés. Les essais sont automatisés et ne remplacent pas un équilibrage humain sur téléphone. Les systèmes de sauvegarde, CJ, prix, caméra et interface sont conservés.
+
+Le bilan daté du 13 octobre ci-dessous décrit l’état historique initial de la V1.
+
 13 octobre 2026. Base : `1708fff`. Version de sécurité complète créée avant modification, y compris `.git`. Le 13 octobre, CJ a ensuite autorisé le commit et le push après correction de la taille du personnage.
 
 ## Effectué

@@ -13,13 +13,13 @@ Ouvrir `index.html` dans Chrome/Edge, ou garder le serveur local et l'adresse ut
 
 ## Parcours
 
-Distance illimitée. Vitesse de base de 17 à 36,5 m/s. La planche ajoute 12 à 18 % de vitesse, sans protection. La difficulté évolue par paliers : 600, 1 800, 3 000, 6 000, 10 000, 20 000 et 50 000 mètres. Deux rangées de répit sur dix. Une voie libre est réservée ; les drones ne la traversent pas. Espacement calculé pour une fenêtre d'au moins 1,45 s à la vitesse maximale prévue du secteur.
+Distance illimitée. Vitesse de base de 17 à 36,5 m/s. La planche ajoute 12 à 18 % de vitesse, sans protection. La difficulté évolue par paliers : 200, 600, 1 200, 2 500, 5 000, 10 000 et 20 000 mètres. Les séquences alternent changements de voie, sauts, glissades et récupération. Deux voies peuvent être occupées dès 200 m. À partir de 450 m, certains passages imposent un saut ; à partir de 700 m, une glissade. La route franchissable est toujours accessible depuis une voie adjacente, mais elle peut demander une action annoncée par SAUT ou GLISSE. Espacement minimal de 1,1 s à la vitesse maximale prévue avec planche, et au moins 1,2 s après les passages obligatoires.
 
-Drones à partir de 3 000 m : bas = saut/esquive ; haut = glissade/esquive. Trajet gauche-droite-gauche, flèche anticipée, mouvement figé à l'approche. Fossés de trois unités de route, sur une ou deux voies : saut/esquive, sinon chute.
+Drones bas à partir de 1 200 m, hauts à partir de 1 600 m : saut/esquive ou glissade/esquive. Ils restent hors de la route franchissable réservée. Trajet gauche-droite-gauche, flèche anticipée, mouvement figé à l'approche. Fossés à partir de 900 m, de trois unités de route : saut/esquive, sinon chute.
 
 ## Fragments
 
-Petits groupes au lieu des longues lignes : fragments violets de 2 ou 3 unités, fragments dorés à risque de 5. Récompense de distance : 5 par tranche de 1 000 m, une fois par course. Esquive proche : 1, limitée à 10 par course. Les crédits sont enregistrés pendant la course, avec journal de reprise après interruption et déduplication.
+Petits groupes au lieu des longues lignes : fragments ordinaires de 1 ou 2 unités, fragments dorés à risque de 5. Les fragments placés au-dessus des obstacles demandent un saut ; ceux sous les lasers demandent une glissade. Aimant et propulsion conservent leurs avantages de collecte. Récompense de distance : 5 par tranche de 1 000 m, une fois par course. Esquive proche : 1, limitée à 10 par course. Les crédits sont enregistrés pendant la course, avec journal de reprise après interruption et déduplication.
 
 Les prix existants restent provisoires et inchangés : améliorations 600 / 1 500 / 3 200 / 6 000 / 10 000 ; chat 5 000 ; Nova 20 mots. Lettres, missions, collection et compagnons sont conservés.
 
@@ -57,3 +57,5 @@ Aucun morceau ajouté. Options et volume indépendant préparés. Après validat
 Le jeu ne nécessite pas les dépendances de test. Pour les tests : `npm install`, `npx playwright install chromium`, `npm test`. Chrome déjà installé peut être utilisé via `NOCTURNE_CHROME`. La suite actuelle est `tests/v1-smoke.cjs` ; l'ancienne suite est conservée comme référence dans `tests/legacy-v010-smoke.cjs`.
 
 Ne pas effacer le stockage pour rafraîchir les fichiers : actualiser sans cache suffit. Avant tout retour à v0.10, exporter les nouvelles données V1, car cette ancienne version ne représente pas les nouveaux stocks.
+
+Tests supplémentaires du parcours : `node tests/track-patterns.cjs` et `node tests/challenge-patterns-smoke.cjs`.

@@ -133,9 +133,9 @@
     dist = score = orbs = scroll = frame = 0;
     objects = [];
     collectedFragments=[]; wordToast='';wordToastTime=0; wave=0; safeLane=1; magnet=surcharge=propulsion=0; chargeReady=true; runStats={jumps:0,dodges:0};
-    for(let z=-26;z>-150;z-=24) spawnObj(z);
+    let nextZ=-26;while(nextZ>-150)nextZ-=spawnObj(nextZ);
     speed = 0.34;
-    spawn = 32;
+    spawn = Math.max(0,-150-nextZ);
     board = jump = slide = stun = 0;
     state = 'playing';
     overlay.classList.add('hidden');
@@ -151,7 +151,7 @@
   }
   async function death(fall=false){if(state!=='playing')return;if(activeBonus)cooldown=5;activeBonus=null;board=magnet=propulsion=0;CJGameIntegration?.suspend();if(fall){state='falling';fallTime=.5;return;}await offerRevive();}
   async function offerRevive(){state='checking';try{await NRStore.flush();if(!revived&&NRStore.read().wallet>=50){state='dead';showOverlay('UNE SECONDE CHANCE','REVENIR · 50 ◈');msg.innerHTML='<p>Reprends à la même distance avec 2 secondes de protection.</p><button id="refuse-revive">Terminer la course</button>';document.querySelector('#refuse-revive').onclick=()=>finish();}else finish();}catch(e){state='paused';storeError(e);}}
-  async function resurrect(){if(state!=='dead'||bonusPending)return;bonusPending=true;try{if(!await NRStore.revive(runId)){bonusPending=false;return finish();}revived=true;invulnerable=2;objects=objects.filter(o=>!hazards.includes(o.type)||o.z<-30||o.z>9);jump=slide=0;state='playing';overlay.classList.add('hidden');last=performance.now();requestAnimationFrame(loop);}catch(e){storeError(e);}finally{bonusPending=false;}}
+  async function resurrect(){if(state!=='dead'||bonusPending)return;bonusPending=true;try{if(!await NRStore.revive(runId)){bonusPending=false;return finish();}revived=true;invulnerable=2;objects=objects.filter(o=>(!hazards.includes(o.type)&&o.type!=='cue')||o.z<-30||o.z>9);jump=slide=0;state='playing';overlay.classList.add('hidden');last=performance.now();requestAnimationFrame(loop);}catch(e){storeError(e);}finally{bonusPending=false;}}
   function showOverlay(title,label){
     overlay.classList.toggle('arcade-home',state==='menu');
     document.querySelector('#screen-title').textContent=title;
@@ -228,8 +228,8 @@
 
   pauseBtn.addEventListener('click', togglePause);
 
-  // One free lane per row; adjacent safe lanes and spaced rows avoid traps.
-  function spawnObj(z=-150){const row=NRTrack.row({distance:dist,wave,safe:safeLane,z,speed});safeLane=row.safe;for(const item of row.items)objects.push({...item,safe:row.safe,id:++sequence,hit:false});if(wave%4===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,id:++sequence,...available[0]});}wave++;return row.spacing;}
+  // Each row has a reachable route, sometimes requiring a signalled jump or slide.
+  function spawnObj(z=-150){const row=NRTrack.row({distance:dist,wave,safe:safeLane,z,speed});safeLane=row.safe;for(const item of row.items)objects.push({...item,safe:row.safe,routeAction:row.action,pattern:row.pattern,rowId:wave,id:++sequence,hit:false});if(wave%4===0){const w=NRProfile.currentWord();const available=[...w.letters].map((letter,slot)=>({letter,slot,wordId:NRProfile.word.completed})).filter(o=>!NRProfile.word.found[o.slot]&&!objects.some(p=>p.type==='letter'&&!p.hit&&p.wordId===o.wordId&&p.slot===o.slot));if(available.length)objects.push({lane:safeLane,z:z-13,type:'letter',hit:false,id:++sequence,...available[0]});}wave++;return row.spacing;}
   function update(dt){
     if(bonusPending&&state==='playing')return;
     if(state==='falling'){fallTime-=dt;if(fallTime<=0)offerRevive();return;}
@@ -240,8 +240,9 @@
     const previousDistance=dist;dist+=advance*2;score+=advance*10;scroll+=dt*speed;frame+=dt*10;jump=Math.max(0,jump-dt);slide=Math.max(0,slide-dt);
     if(!newRecord&&dist>oldBest){newRecord=true;recordFlash=3;}
     for(let milestone=Math.floor(previousDistance/1000)+1;milestone<=Math.floor(dist/1000);milestone++){orbs+=5;persist(NRStore.credit(runId,'distance:'+milestone,5));}
-    spawn-=advance;if(spawn<=0)spawn=spawnObj();
+    spawn-=advance;while(spawn<=0)spawn+=spawnObj(-150-advance-spawn);
     for(const o of objects){const previous=o.z;o.z+=advance;o.travel=(o.travel||0)+advance;const olane=o.type.startsWith('drone')?NRTrack.droneX(o):o.lane,delta=Math.abs(px-olane),close=delta<.40,crossing=previous<2.4&&o.z>=2.4;
+      if(o.type==='cue')continue;
       const airborne=jump>0&&Math.sin((.85-jump)/.85*Math.PI)>.48;
       const insideHazard=Math.abs(o.z-2.4)<=(['crate','container'].includes(o.type)?1.13:.35);
       const insideGap=o.type==='gap'&&o.z-o.length/2<=2.4&&o.z+o.length/2>=2.4;
@@ -250,7 +251,7 @@
         else if(activeBonus?.type==='surge'&&o.type!=='gap'){activeBonus=null;cooldown=5;invulnerable=0;o.hit=true;o.destroyed=true;NRProfile.sound(160);}
         else{death(o.type==='gap');return;}
       }else if(crossing&&!o.hit&&hazards.includes(o.type)){o.hit=true;runStats.dodges++;if(delta<.72&&propulsion<=0&&invulnerable<=0)persist(NRStore.near(runId,'near:'+o.id).then(ok=>{if(ok)orbs++;}));}
-      if(!o.hit&&!hazards.includes(o.type)&&((crossing&&close)||(magnet>0&&o.type==='crystal'&&o.z>-7&&o.z<2.4))){o.hit=true;if(o.type==='crystal'){const amount=o.value||1;orbs+=amount;persist(NRStore.credit(runId,'fragment:'+o.id,amount));if(magnet>0){const q=projectWorld((o.lane-1)*3.66,1.05,o.z);if(q)collectedFragments.push({x:q.x,y:q.y,time:.45});}NRProfile.sound(900);}else if(o.type==='letter')persist(NRProfile.collectLetter(o).then(result=>{if(result){wordToast=result;wordToastTime=4;}}));else if(NRStore.types.includes(o.type))persist(NRStore.pickup(runId,'pickup:'+o.id,o.type).then(ok=>{if(ok){wordToast='Bonus ajouté au stock · à équiper pour la prochaine course';wordToastTime=3;}}));}
+      if(!o.hit&&!hazards.includes(o.type)&&((crossing&&close&&(o.type!=='crystal'||propulsion>0||magnet>0||(!o.requiresJump&&!o.requiresSlide)||(o.requiresJump&&airborne)||(o.requiresSlide&&slide>.08)))||(magnet>0&&o.type==='crystal'&&o.z>-7&&o.z<2.4))){o.hit=true;if(o.type==='crystal'){const amount=o.value||1;orbs+=amount;persist(NRStore.credit(runId,'fragment:'+o.id,amount));if(magnet>0){const q=projectWorld((o.lane-1)*3.66,o.height||1.05,o.z);if(q)collectedFragments.push({x:q.x,y:q.y,time:.45});}NRProfile.sound(900);}else if(o.type==='letter')persist(NRProfile.collectLetter(o).then(result=>{if(result){wordToast=result;wordToastTime=4;}}));else if(NRStore.types.includes(o.type))persist(NRStore.pickup(runId,'pickup:'+o.id,o.type).then(ok=>{if(ok){wordToast='Bonus ajouté au stock · à équiper pour la prochaine course';wordToastTime=3;}}));}
     }objects=objects.filter(o=>o.z<12);updateBonusControls();
   }
   function updateBonusControls(){
@@ -489,9 +490,10 @@
       if((o.hit&&!hazards.includes(o.type))||o.destroyed||o.z>12)continue;
       if(o.type==='letter'&&(o.wordId!==NRProfile.word.completed||NRProfile.word.found[o.slot]))continue;
       if(window.NR3D&&hazards.includes(o.type)&&!o.type.startsWith('drone'))continue;
-      const pos=projectWorld((o.lane-1)*3.66,(o.type==='crystal'||o.type==='letter')?1.05:0,o.z);if(!pos)continue;
+      const pos=projectWorld((o.lane-1)*3.66,o.type==='crystal'?(o.height||1.05):o.type==='letter'?1.05:0,o.z);if(!pos)continue;
       const size=95*Math.max(.12,Math.min(2.2,pos.scale));
-      if(o.type.startsWith('drone')){const q=projectWorld((NRTrack.droneX(o)-1)*3.66,o.type==='droneLow'?1:2.5,o.z);if(!q)continue;const h=120*q.scale,ds=imageSize('drone',h);draw('drone',q.x-ds.w/2,q.y-h/2,ds.w,h);text(o.type==='droneLow'?'↑':'↓',q.x,q.y-h*.6,Math.max(12,h*.3),'center',o.type==='droneLow'?'#67efff':'#ff6fdc');if(o.z<-25)text((Math.floor((o.travel+6)/24)%2===0?'→':'←'),q.x,q.y+h*.8,Math.max(12,h*.25),'center','#ffe399');
+      if(o.type==='cue'){if(o.z<-60||o.z>2.4)continue;const q=projectWorld((o.lane-1)*3.66,o.action==='up'?5.6:4.2,o.z-5);if(!q)continue;const label=o.action==='up'?'↑ SAUT':'↓ GLISSE';ctx.save();ctx.globalAlpha=Math.min(1,(o.z+60)/20);text(label,q.x,q.y,Math.max(22,Math.min(34,75*q.scale)),'center','#fff29a');ctx.restore();
+      }else if(o.type.startsWith('drone')){const q=projectWorld((NRTrack.droneX(o)-1)*3.66,o.type==='droneLow'?1:2.5,o.z);if(!q)continue;const h=120*q.scale,ds=imageSize('drone',h);draw('drone',q.x-ds.w/2,q.y-h/2,ds.w,h);text(o.type==='droneLow'?'↑':'↓',q.x,q.y-h*.6,Math.max(12,h*.3),'center',o.type==='droneLow'?'#67efff':'#ff6fdc');if(o.z<-25)text((Math.floor((o.travel+6)/24)%2===0?'→':'←'),q.x,q.y+h*.8,Math.max(12,h*.25),'center','#ffe399');
       }else if(o.type==='crystal'){
         ctx.save();ctx.translate(pos.x,pos.y);ctx.shadowColor='#e84cff';ctx.shadowBlur=NRProfile.options.quality==='low'?0:18;
         ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(size*.28,0);ctx.lineTo(0,size*.4);ctx.lineTo(-size*.28,0);ctx.closePath();ctx.fillStyle=o.value===5?'#eaa33d':'#c42af1';ctx.fill();ctx.strokeStyle='#ffe0ff';ctx.lineWidth=Math.max(1,size*.025);ctx.stroke();ctx.beginPath();ctx.moveTo(0,-size*.55);ctx.lineTo(0,size*.4);ctx.lineTo(size*.28,0);ctx.stroke();ctx.restore();

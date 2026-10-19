@@ -1,11 +1,59 @@
-/* Conservative row generator: an adjacent clear lane is reserved per row. */
-(()=>{const hazards=['crate','barrier','laser','container','gap','droneLow','droneHigh'];
-const stage=d=>d<600?0:d<1800?1:d<3000?2:d<6000?3:d<10000?4:d<20000?5:d<50000?6:7;
+/* Short authored sequences with an adjacent, bonus-free route through each row. */
+(()=>{'use strict';
+const hazards=['crate','barrier','laser','container','gap','droneLow','droneHigh'];
+const thresholds=[200,600,1200,2500,5000,10000,20000];
+const stage=d=>thresholds.reduce((tier,limit)=>tier+(d>=limit),0);
+const sequences=[
+ ['weave','choice','jump','weave','duck','rest','weave','choice','jump','duck','weave','choice'],
+ ['choice','weave','duck','jump','weave','choice','rest','weave','duck','weave','jump','choice'],
+ ['weave','jump','choice','duck','rest','weave','drone','choice','weave','jump','duck','weave'],
+ ['choice','weave','drone','jump','weave','duck','choice','rest','weave','duck','jump','choice']
+];
 function droneX(o){const phase=(o.travel||0)/24;const tri=1-Math.abs((phase%2)-1);if(o.z>-25&&o.frozenX===undefined)o.frozenX=(o.from+(o.to-o.from)*tri);return o.frozenX??(o.from+(o.to-o.from)*tri);}
-window.NRTrack={hazards,stage,droneX,row({distance,wave,safe,z,speed,random=Math.random}){const tier=stage(distance),rest=wave%10>=8;
- let next=Math.max(0,Math.min(2,safe+Math.floor(random()*3)-1));const pool=['crate','barrier'];if(tier>=1)pool.push('laser','container');if(tier>=2)pool.push('gap');if(tier>=3)pool.push('droneLow','droneHigh');const items=[];
- if(!rest){let type=pool[Math.floor(random()*pool.length)];if(type.startsWith('drone')){if(next===1)next=safe===0?0:safe===2?2:random()<.5?0:2;const lanes=[0,1,2].filter(l=>l!==next);items.push({type,lane:lanes[0],from:lanes[0],to:lanes[1],travel:0,z});}else{const lanes=[0,1,2].filter(l=>l!==next);if(random()<.5)lanes.reverse();const count=tier>=4&&random()<Math.min(.7,.3+(tier-4)*.12)?2:1;for(const lane of lanes.slice(0,count))items.push({type,lane,z,length:type==='gap'?3:0});}}
- const motif=wave%4;if(motif===0||rest)items.push({type:'crystal',value:rest?2:3,lane:next,z:z+6});else if(motif===1){items.push({type:'crystal',value:3,lane:next,z:z+5},{type:'crystal',value:3,lane:next,z:z+2});}else if(motif===2&&!rest){const risk=items.find(o=>!o.type.startsWith('drone'));if(risk)items.push({type:'crystal',value:5,lane:risk.lane,z:z+7});}
+function row({distance,wave,safe,z=-150,random=Math.random}){
+ const encounter=distance+Math.max(0,(2.4-z)*2),tier=stage(encounter);
+ const index=wave%12,sequence=sequences[Math.floor(wave/12)%sequences.length];
+ let pattern=sequence[index],next=safe,action=null;
+ const moves=[-1,1].filter(step=>safe+step>=0&&safe+step<=2);
+ const shift=()=>safe+moves[Math.floor(random()*moves.length)];
+ if(tier===0){pattern=wave%7===5?'rest':wave%3===2?'weave':'choice';}
+ if(pattern==='drone'&&encounter<1200)pattern='weave';
+ if(pattern==='jump'&&encounter<450)pattern='choice';
+ if(pattern==='duck'&&encounter<700)pattern='weave';
+ const rest=pattern==='rest';
+ if(pattern==='weave'||pattern==='jump'||pattern==='duck')next=shift();
+ else if(!rest&&random()<.35)next=shift();
+ if(pattern==='drone'&&next===1)next=safe===1?(random()<.5?0:2):safe;
+ const items=[],other=[0,1,2].filter(lane=>lane!==next);
+ const add=(type,lane)=>items.push({type,lane,z,...(type==='gap'?{length:3}:{})});
+ if(pattern==='jump'||pattern==='duck'){
+  action=pattern==='jump'?'up':'down';
+  other.forEach(lane=>add('container',lane));
+  const jumpTypes=encounter>=900?['barrier','crate','gap']:['barrier','crate'];
+  add(action==='up'?jumpTypes[Math.floor(random()*jumpTypes.length)]:'laser',next);
+  items.push({type:'cue',lane:next,z:z+5,action});
+ }else if(pattern==='drone'){
+  const type=encounter>=1600&&random()<.5?'droneHigh':'droneLow';
+  items.push({type,lane:other[0],from:other[0],to:other[1],travel:0,z});
+ }else if(!rest){
+  const pool=['barrier','crate'];if(tier>=1)pool.push('container','laser');if(encounter>=900)pool.push('gap');
+  const double=tier>=1&&(pattern==='weave'||random()<Math.min(.9,.55+tier*.07));
+  if(random()<.5)other.reverse();
+  for(const lane of other.slice(0,double?2:1))add(pool[Math.floor(random()*pool.length)],lane);
+ }
+ // Keep ordinary earnings close to the earlier economy. Extra gold asks for an action.
+ if(rest){items.push({type:'crystal',value:1,lane:next,z:z+5},{type:'crystal',value:1,lane:next,z:z+1});}
+ else if(action){items.push({type:'crystal',value:2,lane:next,z,height:action==='up'?4.2:.7,requiresJump:action==='up',requiresSlide:action==='down'});}
+ else items.push({type:'crystal',value:2,lane:next,z:z+5});
+ if(!action&&!rest&&wave%4===1){
+  const risk=items.find(o=>['barrier','crate','laser','gap'].includes(o.type));
+  if(risk)items.push({type:'crystal',value:5,lane:risk.lane,z,height:risk.type==='laser'?.7:4.2,requiresJump:risk.type!=='laser',requiresSlide:risk.type==='laser'});
+ }
  if(wave%11===5)items.push({type:['magnet','board','surge','propulsion'][Math.floor(wave/11)%4],lane:next,z:z-7});
- return {safe:next,items,spacing:Math.max(rest?32:24,Math.min(.73,.34+(distance+400)/7000)*1.18*25*1.45),rest,tier};}};
+ const seconds=[2,1.65,1.45,1.3,1.2,1.1,1.1,1.1][tier];
+ const interval=rest?seconds*1.6:action?Math.max(1.2,seconds+.1):pattern==='drone'?Math.max(1.25,seconds):seconds;
+ const maxPace=Math.min(.73,.34+(encounter+100)/7000)*1.18*25;
+ return {safe:next,action,pattern,encounter,items,spacing:Math.max(13,maxPace*interval),rest,tier};
+}
+window.NRTrack={hazards,stage,droneX,row};
 })();
