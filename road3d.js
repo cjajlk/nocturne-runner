@@ -14,7 +14,7 @@ const vp=new Float32Array(16);
 function resize(width,height,mobile=false,follow=0){
  if(camera&&W===width&&H===height&&mobileView===mobile&&chaseHeight===follow)return;
  W=width;H=height;mobileView=mobile;chaseHeight=follow;
- camera=mobile?[0,11+follow,22]:[0,5.9,14];const target=mobile?[0,-.5+follow,-40]:[0,-3.2,-34],aspect=W/H,near=.2,far=400;
+ camera=mobile?[0,8.8+follow,22]:[0,5.9,14];const target=mobile?[0,0.1+follow,-40]:[0,-3.2,-34],aspect=W/H,near=.2,far=400;
  front=norm(sub(target,camera));right=norm(cross(front,[0,1,0]));up=cross(right,front);
  // Low chase camera, pitched down the street. Lens offset composes the
  // entire world lower; modest vertical following keeps the jump in the scene.

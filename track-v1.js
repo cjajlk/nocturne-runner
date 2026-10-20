@@ -3,6 +3,20 @@
 const hazards=['crate','barrier','laser','container','gap','droneLow','droneHigh'];
 const thresholds=[200,600,1200,2500,5000,10000,20000];
 const stage=d=>thresholds.reduce((tier,limit)=>tier+(d>=limit),0);
+// Advanced authored patterns demand different successive actions while keeping
+// one adjacent, reachable route through each row. No boost is required.
+const advancedSequences=[
+ ['weave','jump','choice','duck','weave','jump','drone','duck','weave','rest','jump','choice'],
+ ['duck','weave','jump','choice','drone','duck','weave','jump','rest','weave','duck','jump'],
+ ['jump','weave','duck','drone','choice','jump','weave','duck','jump','rest','weave','duck'],
+ ['choice','duck','jump','weave','drone','jump','duck','weave','jump','rest','duck','weave']
+];
+const expertSequences=[
+ ['jump','weave','duck','jump','drone','weave','duck','jump','weave','rest','duck','jump'],
+ ['duck','jump','weave','drone','jump','duck','weave','jump','duck','rest','weave','jump'],
+ ['weave','duck','jump','duck','weave','drone','jump','duck','weave','rest','jump','duck'],
+ ['jump','duck','weave','jump','drone','duck','jump','weave','duck','rest','jump','weave']
+];
 const sequences=[
  ['weave','choice','jump','weave','duck','rest','weave','choice','jump','duck','weave','choice'],
  ['choice','weave','duck','jump','weave','choice','rest','weave','duck','weave','jump','choice'],
@@ -12,7 +26,9 @@ const sequences=[
 function droneX(o){const phase=(o.travel||0)/24;const tri=1-Math.abs((phase%2)-1);if(o.z>-25&&o.frozenX===undefined)o.frozenX=(o.from+(o.to-o.from)*tri);return o.frozenX??(o.from+(o.to-o.from)*tri);}
 function row({distance,wave,safe,z=-150,random=Math.random}){
  const encounter=distance+Math.max(0,(2.4-z)*2),tier=stage(encounter);
- const index=wave%12,sequence=sequences[Math.floor(wave/12)%sequences.length];
+ const index=wave%12;
+ const library=tier>=6?expertSequences:tier>=5?advancedSequences:sequences;
+ const sequence=library[Math.floor(wave/12)%library.length];
  let pattern=sequence[index],next=safe,action=null;
  const moves=[-1,1].filter(step=>safe+step>=0&&safe+step<=2);
  const shift=()=>safe+moves[Math.floor(random()*moves.length)];
@@ -50,9 +66,11 @@ function row({distance,wave,safe,z=-150,random=Math.random}){
   if(risk)items.push({type:'crystal',value:5,lane:risk.lane,z,height:risk.type==='laser'?.7:4.2,requiresJump:risk.type!=='laser',requiresSlide:risk.type==='laser'});
  }
  if(wave%11===5)items.push({type:['magnet','board','surge','propulsion'][Math.floor(wave/11)%4],lane:next,z:z-7});
- const seconds=[2,1.65,1.45,1.3,1.2,1.1,1.1,1.1][tier];
- const interval=rest?seconds*1.6:action?Math.max(1.2,seconds+.1):pattern==='drone'?Math.max(1.25,seconds):seconds;
- const maxPace=Math.min(.73,.34+(encounter+100)/7000)*1.18*25;
+ // Maintain predictable, playable reaction windows at the UPDATED running speed.
+ // Harder tiers come from action variety, not sub-second unavoidable spawns.
+ const seconds=[2,1.65,1.45,1.3,1.2,1.17,1.13,1.13][tier];
+ const interval=rest?seconds*(tier>=5?1.4:1.6):action?Math.max(1.32,seconds+.13):pattern==='drone'?Math.max(1.3,seconds):seconds;
+ const maxPace=Math.min(.86,.36+(encounter+100)/5200)*1.18*25;
  return {safe:next,action,pattern,encounter,items,spacing:Math.max(13,maxPace*interval),rest,tier};
 }
 window.NRTrack={hazards,stage,droneX,row};
