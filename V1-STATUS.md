@@ -78,3 +78,7 @@ Inchangés : `.git` jusqu'à l'autorisation finale de commit, `cj-integration.js
 4. Commencer par des essais humains sur PC/téléphone et l'origine correcte du Hub ; mesurer gains/minute, lisibilité, réaction et temps d'achat.
 5. Décider de la conversion réversible de Surcharge avant de modifier ce niveau historique. Fournir ensuite le morceau original approuvé.
 6. Avant retour à v0.10, exporter `nocturneRunnerV1Data`, le journal en attente et la copie de migration. Restaurer le code depuis la copie de sécurité ; ne pas supprimer les données V1, qui contiennent des stocks absents du format ancien.
+
+## Mise à jour du 20 octobre 2026 — runners supplémentaires
+
+K-0, Vesper et Onyx disposent de six poses de dos et sont jouables après défi et achat. Conditions et prix inchangés depuis la préparation. Achat atomique, équipement sauvegardé, aperçu d’accueil cohérent. Ni migration destructive ni modification des collisions ou du Hub. Tests dédiés : seuils, solde, concurrence entre onglets, rechargement, bouton d’achat et poses sur les trois formats portrait. Les sections historiques ci-dessus décrivent les étapes précédentes.

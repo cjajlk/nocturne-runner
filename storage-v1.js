@@ -11,6 +11,7 @@ function staged(kind,payload,apply){const key=PREFIX+(payload.id||'words')+':'+p
 function run(d,id){const r=d.runs[id];if(!r||r.done)throw Error('Course terminée ou inconnue');return r;}
 function once(r,event){if(r.events[event])return false;r.events[event]=true;return true;}
 const api={KEY,BACKUP,types,read,empty:()=>prepare({}),transaction,flush:()=>queue,ready:null,
+ buyCharacter(id){return transaction(d=>{const ch=window.NRCharacters?.find(ch=>ch.id===id);if(!ch||d.unlockedCharacters.includes(id)||!window.NRCharacterEligible(ch,d)||d.wallet<ch.price)return false;d.wallet-=ch.price;d.unlockedCharacters.push(id);d.character=id;return true;});},
  async start(){const id=crypto.randomUUID();await transaction(d=>{d.runs[id]={events:{},remaining:Object.fromEntries(types.map(t=>[t,Math.min(d.loadout[t],d.inventory[t])])),resurrected:false,earned:0,near:0,done:false};});return id;},
  credit(id,event,amount){return staged('credit',{id,event,amount},d=>{const r=run(d,id);if(!once(r,event))return false;amount=int(amount);d.wallet+=amount;d.stats.crystals+=amount;r.earned+=amount;return true;});},
  pickup(id,event,type){return staged('pickup',{id,event,type},d=>{const r=run(d,id);if(!types.includes(type)||!once(r,event))return false;d.inventory[type]++;return true;});},

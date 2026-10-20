@@ -59,3 +59,9 @@ Le jeu ne nécessite pas les dépendances de test. Pour les tests : `npm install
 Ne pas effacer le stockage pour rafraîchir les fichiers : actualiser sans cache suffit. Avant tout retour à v0.10, exporter les nouvelles données V1, car cette ancienne version ne représente pas les nouveaux stocks.
 
 Tests supplémentaires du parcours : `node tests/track-patterns.cjs` et `node tests/challenge-patterns-smoke.cjs`.
+
+### Runners supplémentaires
+
+K-0 : record de 2 500 m puis 6 000 cristaux ; Vesper : 40 mots puis 10 000 cristaux ; Onyx : record de 7 500 m et 60 mots puis 18 000 cristaux. Achat dans Personnages, équipement immédiat et persistant. Capacités et collisions identiques. Détails, assets et prompts : [PERSONNAGES.md](assets/characters/PERSONNAGES.md).
+
+Validation dédiée : `node tests/characters-smoke.cjs` (mêmes variables Playwright / Chrome que les autres tests).

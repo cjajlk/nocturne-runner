@@ -39,6 +39,7 @@
   const img = {};
   const manifest = {
     novaSheet:'@assets/nova-sheet.png',catSheet:'@assets/cat-sheet.png',
+    ...Object.fromEntries(NRCharacters.map(ch=>[ch.sheetKey,'@'+ch.sheet])),
     run: ['perso_dos/asset_04.png', 'perso_dos/asset_05.png', 'perso_dos/asset_04.png', 'perso_dos/asset_06.png'],
     idle: 'perso_dos/asset_01.png',
     jump: 'perso_dos/asset_07.png',
@@ -536,9 +537,9 @@
     const glow=ctx.createRadialGradient(0,43,1,0,43,20);glow.addColorStop(0,'#62eaffaa');glow.addColorStop(1,'#62eaff00');ctx.fillStyle=glow;ctx.fillRect(-22,34,44,33);
     ctx.restore();
   }
-  function drawSprite(image,rect,x,feet,height){
+  function drawSprite(image,rect,x,feet,height,anchor=.5){
     if(!image?.complete||!image.naturalWidth||!rect)return;
-    const width=height*rect[2]/rect[3];ctx.drawImage(image,rect[0],rect[1],rect[2],rect[3],x-width/2,feet-height,width,height);
+    const width=height*rect[2]/rect[3];ctx.drawImage(image,rect[0],rect[1],rect[2],rect[3],x-width*anchor,feet-height,width,height);
   }
   function player(){
     const mobile=document.body.classList.contains('mobile-course'),worldX=(px-1)*3.66;
@@ -560,10 +561,12 @@
     const feet=(mobile?raised.y:ground-lift-hover)+(state==='falling'?(1-fallTime/.5)*360:0);
     ctx.fillStyle=mobile?'rgba(5,8,20,.58)':'rgba(5,8,20,.42)';ctx.beginPath();ctx.ellipse(foot?.x||x,ground+(mobile?0:5),(board>0?105:mobile?52:70)*groundScale,(mobile?6:15)*groundScale,0,0,Math.PI*2);ctx.fill();
     if(board>0){ctx.save();ctx.translate(x,feet+10);ctx.scale(.78*groundScale,.78*groundScale);hoverboard(0,0);ctx.restore();}
-    if(NRProfile.character==='nova'&&img.novaSheet.complete&&img.novaSheet.naturalWidth){
-      const pose=(jump>0||propulsion>0)?3:slide>0?4:board>0||state==='over'?0:1+Math.floor(frame/2)%2;
-      const rect=NRSPRITES.nova.frames[pose];
-      drawSprite(img.novaSheet,rect,x,feet,pose===4?h:actorHeight*rect[3]/NRSPRITES.nova.frames[0][3]);
+    const character=NRCharacters.find(ch=>ch.id===NRProfile.character),sheet=character?img[character.sheetKey]:img.novaSheet,rig=NRSPRITES[NRProfile.character];
+    if(rig&&sheet?.complete&&sheet.naturalWidth){
+      const pose=(jump>0||propulsion>0)?3:slide>0?4:board>0?5:state==='over'?0:1+Math.floor(frame/2)%2;
+      const rect=rig.frames[pose];
+      const height=pose===4?h:character&&pose!==3?actorHeight:actorHeight*Math.min(1.04,rect[3]/rig.frames[0][3]);
+      drawSprite(sheet,rect,x,feet,height,rig.anchors?(rig.anchors[pose]-rect[0])/rect[2]:.5);
     }else{const {w}=imageSize(im,h),scale=Math.min(1,2*Math.min(x-12,W-12-x)/w);draw(im,x-w*scale/2,feet-h*scale,w*scale,h*scale);}
     if(activeBonus?.type==='surge')draw('shield',x-30*groundScale,feet-h-50*groundScale,60*groundScale,60*groundScale);
     if(magnet>0)companion(x,feet);
