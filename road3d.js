@@ -14,13 +14,14 @@ const vp=new Float32Array(16);
 function resize(width,height,mobile=false,follow=0,followX=0){
  if(camera&&W===width&&H===height&&mobileView===mobile&&chaseHeight===follow&&chaseX===followX)return;
  W=width;H=height;mobileView=mobile;chaseHeight=follow;chaseX=followX;
- camera=mobile?[followX,5.6+follow,16.5]:[0,5.9,14];const target=mobile?[followX,2.1+follow,-34]:[0,-3.2,-34],aspect=W/H,near=.2,far=400;
+ const portrait=mobile&&W<H;
+ camera=mobile?[followX,(portrait?5.2:5.6)+follow,portrait?15:16.5]:[0,5.9,14];const target=mobile?[followX,(portrait?2.5:2.1)+follow,-34]:[0,-3.2,-34],aspect=W/H,near=.2,far=400;
  front=norm(sub(target,camera));right=norm(cross(front,[0,1,0]));up=cross(right,front);
  // Mobile portrait framing: slightly closer chase camera and an upward
  // lens shift reduce empty sky. All world-space sprites and obstacles
  // continue to use this same projection to preserve visual alignment.
  // The portrait lens is bounded to preserve room at the outer lanes.
- f=mobile?Math.min(1.58,aspect*3.85):1/Math.tan(Math.PI/2.3/2);shiftY=mobile?-.035:0;
+ f=mobile?Math.min(portrait?1.60:1.58,aspect*3.85):1/Math.tan(Math.PI/2.3/2);shiftY=mobile?(portrait?-.01:-.035):0;
  const nf=1/(near-far),persp=[f/aspect,0,0,0,0,f,0,0,0,shiftY*2,(far+near)*nf,-1,0,0,2*far*near*nf,0];
  const view=[right[0],up[0],-front[0],0,right[1],up[1],-front[1],0,right[2],up[2],-front[2],0,-dot(right,camera),-dot(up,camera),dot(front,camera),1];
  for(let col=0;col<4;col++)for(let row=0;row<4;row++){let n=0;for(let k=0;k<4;k++)n+=persp[k*4+row]*view[col*4+k];vp[col*4+row]=n;}

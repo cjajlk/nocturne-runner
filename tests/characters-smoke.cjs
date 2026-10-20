@@ -57,7 +57,8 @@ const root=path.resolve(__dirname,'..');
      await p.evaluate(values=>{CHAR_TEST.set({jump:0,slide:0,board:0,propulsion:0,frame:0,objects:[],...values});CHAR_TEST.render();},values);
      const draw=await p.evaluate(()=>window.CHAR_DRAW),rect=await p.evaluate(v=>NRSPRITES[v.id].frames[v.index],{id,index});
      assert(draw.src.endsWith('/'+id+'-sheet.png'));assert.deepEqual(draw.rect,rect);
-     assert(draw.height>0&&draw.height<260);assert(draw.feet-draw.height>500,'head too close to HUD');assert(draw.feet<1400);
+     const hudBottom=await p.locator('#run-hud').evaluate(e=>e.getBoundingClientRect().bottom);
+     assert(draw.height>0&&draw.height<260);assert((draw.feet-draw.height)/1400*height>hudBottom+16,'head overlaps HUD');assert(draw.feet<1400);
      renders.push({width,height,id,pose,draw});
      if(pose==='course'||width===390)await p.screenshot({path:path.join(out,id+'-'+pose+'-'+width+'x'+height+'.png')});
     }

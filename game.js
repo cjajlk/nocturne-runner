@@ -602,7 +602,7 @@
     if(document.body.classList.contains('mobile-course')){
       // Keep the runner inside the portrait safe area on outer lanes.
       // Camera and all world-space sprites share the exact same projection.
-      const followY=jump>0&&propulsion<=0?Math.sin((.85-jump)/.85*Math.PI)*1.8:0;
+      const followY=jump>0&&propulsion<=0?Math.sin((.85-jump)/.85*Math.PI)*(W<H?2.6:1.8):0;
       window.NR3D?.resize(W,H,true,followY,(px-1)*3.66*.67);
     }
     background();
