@@ -1,0 +1,15 @@
+NOCTURNE RUNNER — Difficulté V2 — prototype local
+
+Base: ZIP Nocturne_Runner_camera_vitesse_avec_git.zip, conserve .git ainsi que toutes les modifications locales déjà incluses dans cette archive.
+
+Modifications supplémentaires : track-v1.js et tests/track-patterns.cjs uniquement.
+- Nouvelles séquences avancées à partir d'environ 5 000 m et expertes après 10 000 m.
+- Enchainements variés entre saut, glissade, changement de voie et drones, avec des pauses courtes.
+- Espacement recalculé à partir de la vitesse actuellement appliquée dans game.js (0.36 à 0.86, boost inclus).
+- Délai minimal prudent entre rangées; une trajectoire adjacente sans bonus reste prévue par le générateur.
+- Vitesse et caméra inchangées par ce correctif.
+
+Vérification : node tests/track-patterns.cjs (22 500 rangées simulées) OK; node --check game.js, road3d.js et track-v1.js OK.
+Tests de navigateur NON effectués : dépendance Playwright absente. Vérification terrain PC/mobile indispensable avant publication; le test des rangées ne prouve pas toutes les trajectoires temporelles.
+
+Aucun commit, push, ou publication. Décompresser dans un dossier distinct pour le tester.

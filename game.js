@@ -237,7 +237,7 @@
     wordToastTime=Math.max(0,wordToastTime-dt);recordFlash=Math.max(0,recordFlash-dt);invulnerable=Math.max(0,invulnerable-dt);collectedFragments=collectedFragments.filter(f=>(f.time-=dt)>0);px+=(lane-px)*Math.min(1,dt*15);
     if(activeBonus){activeBonus.time-=dt;if(activeBonus.time<=0){activeBonus=null;cooldown=5;}}else cooldown=Math.max(0,cooldown-dt);
     board=activeBonus?.type==='board'?activeBonus.time:0;magnet=activeBonus?.type==='magnet'?activeBonus.time:0;propulsion=activeBonus?.type==='propulsion'?activeBonus.time:0;surcharge=0;
-    speed=Math.min(.73,.34+dist/7000)*(board>0?1.12+NRProfile.levels.board*.012:1);const advance=dt*speed*25;
+    speed=Math.min(.86,.36+dist/5200)*(board>0?1.12+NRProfile.levels.board*.012:1);const advance=dt*speed*25;
     const previousDistance=dist;dist+=advance*2;score+=advance*10;scroll+=dt*speed;frame+=dt*10;jump=Math.max(0,jump-dt);slide=Math.max(0,slide-dt);
     if(!newRecord&&dist>oldBest){newRecord=true;recordFlash=3;}
     for(let milestone=Math.floor(previousDistance/1000)+1;milestone<=Math.floor(dist/1000);milestone++){orbs+=5;persist(NRStore.credit(runId,'distance:'+milestone,5));}
@@ -599,7 +599,12 @@
   }
   function render() {
     configureView();
-    if(document.body.classList.contains('mobile-course'))window.NR3D?.resize(W,H,true,jump>0&&propulsion<=0?Math.sin((.85-jump)/.85*Math.PI)*1.8:0);
+    if(document.body.classList.contains('mobile-course')){
+      // Keep the runner inside the portrait safe area on outer lanes.
+      // Camera and all world-space sprites share the exact same projection.
+      const followY=jump>0&&propulsion<=0?Math.sin((.85-jump)/.85*Math.PI)*1.8:0;
+      window.NR3D?.resize(W,H,true,followY,(px-1)*3.66*.67);
+    }
     background();
     road();
     scenery();
