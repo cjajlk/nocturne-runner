@@ -541,6 +541,27 @@
     if(!image?.complete||!image.naturalWidth||!rect)return;
     const width=height*rect[2]/rect[3];ctx.drawImage(image,rect[0],rect[1],rect[2],rect[3],x-width*anchor,feet-height,width,height);
   }
+  // Bounded screen-space wake behind the feet. No particle pool, timers, blur
+  // or randomness: appearance follows actual pace and the current animation.
+  function speedWake(){
+    if(state!=='playing')return;
+    const level=clamp((speed-.36)/.6548,0,1),low=NRProfile.options.quality==='low';
+    const arc=jump>0?Math.sin((.85-jump)/.85*Math.PI):0;
+    const lift=(propulsion>0?5.4:arc*3.6)+(board>0?.25:0);
+    const mobile=document.body.classList.contains('mobile-course');
+    const foot=projectWorld((px-1)*3.66,mobile?lift:0,2.4);if(!foot)return;
+    const ground=projectWorld((px-1)*3.66,0,2.4),scale=mobile?(ground.y-projectWorld((px-1)*3.66,2.3,2.4).y)/180:1;
+    const feet=mobile?foot.y:foot.y-(propulsion>0?230:arc*155)-(board>0?12:0);
+    const count=low?2:level>.4?6:2,alpha=(.09+level*.30)*(jump>0||slide>0?.65:1)*(low?.6:1);
+    ctx.save();ctx.lineWidth=Math.max(1,1.7*scale);ctx.lineCap='round';ctx.globalAlpha=alpha;
+    for(let i=0;i<count;i++){
+      const phase=((scroll*4.5+i*.237)%1),side=i%2?1:-1;
+      const x=foot.x+side*(9+phase*14)*scale,y=feet+(5+phase*32)*scale;
+      const length=(5+level*24)*(slide>0?.75:1)*scale;
+      ctx.strokeStyle=i%2?'#b755ff':'#66edff';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+side*length*.3,y+length);ctx.stroke();
+    }
+    ctx.restore();
+  }
   function player(){
     const mobile=document.body.classList.contains('mobile-course'),worldX=(px-1)*3.66;
     const foot=projectWorld(worldX,0,2.4),ground=foot?foot.y:1106;
@@ -610,6 +631,7 @@
     scenery();
     entities();
     if(state==='menu')window.NRHomeArt?.paint(c,img,NRProfile.character);
+    speedWake();
     player();
     hud();
   }
