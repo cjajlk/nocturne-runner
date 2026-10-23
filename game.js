@@ -524,10 +524,16 @@
   }
 
   function spectralPulse(x,y,scale,pickup=false){
-    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.lineWidth=2;ctx.globalAlpha=.8;
+    ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.lineWidth=3;ctx.globalAlpha=.95;
     for(const side of [-1,1]){
       const dx=side*(pickup?23:13),radius=pickup?17:11;
-      ctx.strokeStyle=side<0?'#61efff':'#c36aff';ctx.beginPath();ctx.ellipse(dx,-3,radius,5,side*.25,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle=side<0?'#61efff':'#c36aff';
+      // Two separate sole reactors: no platform, blur or particle allocation.
+      const pulse=1+Math.sin(frame*9+side)*.12;
+      ctx.fillStyle=side<0?'#38dbff55':'#b34fff55';ctx.beginPath();ctx.ellipse(dx,0,radius*1.9*pulse,9*pulse,side*.25,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#d9fcff';ctx.beginPath();ctx.ellipse(dx,-3,radius*.7,3,side*.25,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(dx-6,3);ctx.lineTo(dx+side*8,42);ctx.lineTo(dx+side*3,14);ctx.closePath();ctx.fillStyle=side<0?'#61efffaa':'#c36affaa';ctx.fill();
+      ctx.beginPath();ctx.ellipse(dx,-3,radius,5,side*.25,0,Math.PI*2);ctx.stroke();
       ctx.beginPath();ctx.moveTo(dx-side*3,2);ctx.lineTo(dx+side*9,20);ctx.moveTo(dx-side*5,4);ctx.lineTo(dx+side*5,30);ctx.stroke();
       if(pickup){ctx.beginPath();ctx.moveTo(dx-9,-15);ctx.lineTo(dx+7,-15);ctx.lineTo(dx+12,-4);ctx.lineTo(dx-10,-4);ctx.closePath();ctx.stroke();}
     }
@@ -561,7 +567,7 @@
   // or randomness: appearance follows actual pace and the current animation.
   function speedWake(){
     if(state!=='playing')return;
-    const level=clamp((speed-.36)/.6548,0,1),low=NRProfile.options.quality==='low';
+    const level=Math.max(board>0?.65:airLift()>0?.8:0,clamp((speed-.36)/.6548,0,1)),low=NRProfile.options.quality==='low';
     const arc=jump>0?Math.sin((.85-jump)/.85*Math.PI):0;
     const lift=(airLift()>0?airLift():arc*3.6)+(board>0?.25:0);
     const mobile=document.body.classList.contains('mobile-course');
@@ -569,7 +575,7 @@
     const ground=projectWorld((px-1)*3.66,0,2.4),scale=mobile?(ground.y-projectWorld((px-1)*3.66,2.3,2.4).y)/180:1;
     const feet=mobile?foot.y:foot.y-(airLift()>0?airLift()/5.4*230:arc*155)-(board>0?12:0);
     const count=low?2:board>0||airLift()>0||level>.4?6:2,alpha=(.09+level*.30)*(jump>0||slide>0?.65:1)*(low?.6:1);
-    ctx.save();ctx.lineWidth=Math.max(1,(airLift()>0?2.3:1.7)*scale);ctx.lineCap='round';ctx.globalAlpha=Math.min(.6,alpha*(airLift()>0?1.4:1));
+    ctx.save();ctx.lineWidth=Math.max(1,(airLift()>0?3.3:board>0?3:1.7)*scale);ctx.lineCap='round';ctx.globalAlpha=Math.min(.6,alpha*(airLift()>0?1.8:board>0?1.5:1));
     for(let i=0;i<count;i++){
       const phase=((scroll*4.5+i*.237)%1),side=i%2?1:-1;
       const x=foot.x+side*(9+phase*14)*scale,y=feet+(5+phase*32)*scale;
