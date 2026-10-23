@@ -164,9 +164,10 @@
   }
   async function activateBonus(type){if(state!=='playing'||activeBonus||cooldown>0||bonusPending)return false;bonusPending=true;try{if(!await NRStore.consume(runId,crypto.randomUUID(),type))return false;activeBonus={type,time:type==='propulsion'?4+NRProfile.levels.propulsion:duration(type)};if(type==='propulsion')spawnAirFragments();NRProfile.sound(650);return true;}catch(e){storeError(e);return false;}finally{bonusPending=false;}}
   // Runtime-only flight state. Persisted board/propulsion keys and levels are unchanged.
+  const AIR_RUSH_SPEED=1.45;
   function spawnAirFragments(){
     const count=Math.min(12,6+Math.floor(NRProfile.levels.propulsion*1.2)),total=activeBonus.time;
-    const pace=Math.min(.86,.36+dist/5200)*1.20*25;
+    const pace=Math.min(.86,.36+dist/5200)*AIR_RUSH_SPEED*25;
     const route=[[0,1,2,1],[1,0,1,2],[2,1,0,1]][lane];
     for(let wave=0;wave<count;wave++)objects.push({id:++sequence,type:'crystal',aerial:true,value:1,height:6.2,lane:route[wave%4],z:2.4-pace*(.60+wave*total/(count+1)),hit:false});
   }
@@ -250,7 +251,7 @@
     wordToastTime=Math.max(0,wordToastTime-dt);recordFlash=Math.max(0,recordFlash-dt);invulnerable=Math.max(0,invulnerable-dt);collectedFragments=collectedFragments.filter(f=>(f.time-=dt)>0);px+=(lane-px)*Math.min(1,dt*15);
     if(activeBonus){activeBonus.time-=dt;if(activeBonus.time<=0){if(activeBonus.type==='propulsion'){flightLanding=.28;landingHold=1.25;objects=objects.filter(o=>!o.aerial);}activeBonus=null;cooldown=5;}}else cooldown=Math.max(0,cooldown-dt);
     board=activeBonus?.type==='board'?activeBonus.time:0;magnet=activeBonus?.type==='magnet'?activeBonus.time:0;propulsion=activeBonus?.type==='propulsion'?activeBonus.time:0;surcharge=0;
-    speed=Math.min(.86,.36+dist/5200)*(propulsion>0?1.20:board>0?1.12+NRProfile.levels.board*.012:1);const advance=dt*speed*25;
+    speed=Math.min(.86,.36+dist/5200)*(propulsion>0?AIR_RUSH_SPEED:board>0?1.12+NRProfile.levels.board*.012:1);const advance=dt*speed*25;
     if(flightLanding>0){if(landingHold>0&&!landingIsClear(advance)){landingHold=Math.max(0,landingHold-dt);if(landingHold===0)flightLanding=0;}else{landingHold=0;flightLanding=Math.max(0,flightLanding-dt);}}
     const inAir=propulsion>0||flightLanding>0;
     const previousDistance=dist;dist+=advance*2;score+=advance*10;scroll+=dt*speed;frame+=dt*10;jump=Math.max(0,jump-dt);slide=Math.max(0,slide-dt);
@@ -579,7 +580,7 @@
     for(let i=0;i<count;i++){
       const phase=((scroll*4.5+i*.237)%1),side=i%2?1:-1;
       const x=foot.x+side*(9+phase*14)*scale,y=feet+(5+phase*32)*scale;
-      const length=(5+level*24)*(airLift()>0?2.2:slide>0?.75:1)*scale;
+      const length=(5+level*24)*(airLift()>0?3.2:slide>0?.75:1)*scale;
       ctx.strokeStyle=i%2?'#b755ff':'#66edff';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+side*length*.3,y+length);ctx.stroke();
     }
     ctx.restore();
